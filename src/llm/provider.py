@@ -30,7 +30,11 @@ Return ONLY valid JSON with this schema:
   "time_period": string or null
 }
 
-Rules:
+- SQL FIDELITY MANDATE:
+  * Every filter, time_period, or category specified in the plan MUST appear as an explicit WHERE predicate in each SQL query. Never omit declared filters from SQL.
+  * If the question or plan specifies a time_period (e.g. 'last quarter', '2025', 'current year'), you MUST inspect `temporal_context` and use its exact date bounds/predicate in the SQL WHERE clause. Do not invent dates.
+  * If the question asks for a specific category (e.g. 'Hardware', 'Software') or segment, you MUST include it in the WHERE clause (e.g. `category = 'Hardware'`).
+  * If grouping is specified, the SQL MUST include a GROUP BY clause.
 - DuckDB is the only source of numerical truth. Never invent metrics, totals, or rankings.
 - Generate DuckDB SQL that answers the question using only listed tables/columns.
 - Use candidate relationships for joins when analysis spans tables.

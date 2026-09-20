@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -121,6 +122,38 @@ def run_analysis(
     index = 0
     while index < len(sql_requests):
         request = sql_requests[index]
+        # Audit SQL fidelity against declared analytical constraints
+        fidelity_errors = audit_sql_fidelity(plan, request.sql, question, profiles)
+        if fidelity_errors:
+            errors.extend(fidelity_errors)
+            if remaining_retries <= 0:
+                break
+            remaining_retries -= 1
+            try:
+                repaired = planner.plan(
+                    context,
+                    question,
+                    repair=_repair_message(
+                        sql_requests,
+                        errors,
+                        QueryResult(
+                            success=False,
+                            sql=request.sql,
+                            error="; ".join(fidelity_errors),
+                        ),
+                    ),
+                )
+            except LlmError as exc:
+                errors.append(str(exc))
+                break
+            plan = repaired
+            sql_requests = [
+                item for item in repaired.sql_requests if item.sql.strip()
+            ][:MAX_ANALYTICAL_QUERIES]
+            executed = []
+            index = 0
+            continue
+
         result = query_data(
             request.sql,
             connection,
@@ -230,8 +263,82 @@ def _collect_numbers(results: list[FormattedResult]) -> list[str]:
     return values
 
 
+def audit_sql_fidelity(
+    plan: AnalysisPlan,
+    sql: str,
+    question: str,
+    profiles: list[TableProfile],
+) -> list[str]:
+    """Audit SQL queries to verify declared filters and time bounds are represented.
+
+    Guarantees that constraints like 'last quarter' or 'Hardware' are present
+    as WHERE predicates in the generated SQL, preventing misleading totals.
+
+    Args:
+        plan: The proposed AnalysisPlan from the LLM.
+        sql: The SQL statement being audited.
+        question: User's natural language question string.
+        profiles: Table profiles containing known column metadata.
+
+    Returns:
+        List of fidelity error strings, or empty list if fidelity is satisfied.
+    """
+    errors: list[str] = []
+    sql_lower = sql.lower()
+    q_lower = question.lower()
+
+    # Collect known date column names across tables
+    date_cols: set[str] = set()
+    for profile in profiles:
+        for col in profile.columns:
+            if col.data_type == "datetime" or "date" in col.name.lower():
+                date_cols.add(col.name.lower())
+
+    # 1. Audit Date / Time Period constraint
+    has_time_intent = (
+        bool(plan.time_period)
+        or any(token in q_lower for token in ("quarter", "last year", "previous year", "this year", "in 202"))
+    )
+    if has_time_intent:
+        has_date_in_sql = (
+            any(d_col in sql_lower for d_col in date_cols)
+            or any(fn in sql_lower for fn in ("date_trunc", "strftime", "extract", "quarter(", "year(", "month("))
+            or re.search(r"\b202[0-9]\b", sql) is not None
+        )
+        if not has_date_in_sql:
+            period_str = plan.time_period or "requested time period"
+            errors.append(
+                f"SQL Fidelity Error: Analysis plan specifies time period '{period_str}', "
+                f"but SQL contains no date predicate or date column filter."
+            )
+
+    # 2. Audit Categorical and Numeric Filters
+    if plan.filters:
+        for col, val in plan.filters.items():
+            if val is None or str(val).strip() == "":
+                continue
+            col_l = str(col).lower()
+            val_l = str(val).lower()
+            # If neither column name nor value appears in the SQL
+            if col_l not in sql_lower and val_l not in sql_lower:
+                errors.append(
+                    f"SQL Fidelity Error: Analysis plan specifies filter '{col} = {val}', "
+                    f"but this constraint is missing from the SQL query."
+                )
+
+    # 3. Audit Grouping
+    if plan.grouping and plan.grouping.strip():
+        if "group by" not in sql_lower:
+            errors.append(
+                f"SQL Fidelity Error: Analysis plan specifies grouping by '{plan.grouping}', "
+                f"but SQL contains no GROUP BY clause."
+            )
+
+    return errors
+
+
 def _compose_message(
-    explanation: str,
+    explanation: str | None,
     results: list[FormattedResult],
     numbers: list[str],
 ) -> str:

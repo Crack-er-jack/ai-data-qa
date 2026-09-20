@@ -131,12 +131,14 @@ def extract_table_names(sql: str) -> list[str]:
     for match in _FROM_JOIN.finditer(masked):
         first = _unquote(match.group(1))
         second = _unquote(match.group(2)) if match.group(2) else None
+        # Skip subquery starts that slipped through (shouldn't with this regex).
         # Skip subquery starts that slipped through
         if first.upper() in {"SELECT", "VALUES"}:
             continue
         name = (second or first).lower()
         if name in cte_names:
             continue
+        tables.append(name)
         if name not in tables:
             tables.append(name)
 

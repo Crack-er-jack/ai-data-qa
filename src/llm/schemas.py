@@ -36,7 +36,7 @@ class AnalysisPlan(BaseModel):
     sql_requests: list[SqlRequest] = Field(default_factory=list)
     expected_result_shape: ResultShape = "unknown"
     visualization: VisualizationKind = "none"
-    explanation: str = ""
+    explanation: str | None = Field(default="")
     metric: str | None = None
     filters: dict[str, str] = Field(default_factory=dict)
     grouping: str | None = None
@@ -51,6 +51,9 @@ class AnalysisPlan(BaseModel):
     def from_raw(cls, data: dict[str, Any]) -> "AnalysisPlan":
         """Parse raw dictionary output from LLM, ensuring safe defaults and types.
 
+        Handles null explanations, missing collections, and non-string filters
+        so LLM planning calls do not crash on optional fields.
+
         Args:
             data: Dictionary response from the LLM JSON completion.
 
@@ -59,15 +62,27 @@ class AnalysisPlan(BaseModel):
         """
         payload = dict(data)
 
-        # Handle filters if returned as a list of key-value pairs
-        if "filters" in payload and isinstance(payload["filters"], list):
+        # Handle null or missing explanation cleanly
+        if payload.get("explanation") is None:
+            payload["explanation"] = ""
+
+        # Handle null collections
+        if payload.get("required_tables") is None:
+            payload["required_tables"] = []
+        if payload.get("sql_requests") is None:
+            payload["sql_requests"] = []
+
+        # Handle filters if returned as a list of key-value pairs or null
+        if payload.get("filters") is None:
+            payload["filters"] = {}
+        elif isinstance(payload["filters"], list):
             flattened: dict[str, str] = {}
             for item in payload["filters"]:
                 if isinstance(item, dict) and "column" in item and "value" in item:
                     flattened[str(item["column"])] = str(item["value"])
             payload["filters"] = flattened
         # Handle filters if returned as dictionary with non-string/null values
-        elif "filters" in payload and isinstance(payload["filters"], dict):
+        elif isinstance(payload["filters"], dict):
             payload["filters"] = {
                 str(k): str(v)
                 for k, v in payload["filters"].items()

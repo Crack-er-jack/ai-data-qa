@@ -19,6 +19,8 @@ class ColumnProfile:
     null_percentage: float
     cardinality: int | None
     sample_values: list[str]
+    min_value: str | None = None
+    max_value: str | None = None
 
 
 @dataclass
@@ -51,14 +53,25 @@ def profile_column(name: str, series: pd.Series, original_name: str) -> ColumnPr
     null_percentage = round(float(series.isna().mean() * 100), 2)
     cardinality = int(non_null.nunique()) if len(non_null) else 0
     samples = _sample_values(non_null)
+    dtype_str = normalize_dtype(series)
+    min_val: str | None = None
+    max_val: str | None = None
+    if not non_null.empty and dtype_str in {"datetime", "integer", "float", "numeric"}:
+        try:
+            min_val = str(non_null.min())
+            max_val = str(non_null.max())
+        except Exception:
+            min_val, max_val = None, None
     return ColumnProfile(
         name=name,
         original_name=original_name,
-        data_type=normalize_dtype(series),
+        data_type=dtype_str,
         pandas_dtype=str(series.dtype),
         null_percentage=null_percentage,
         cardinality=cardinality if cardinality <= total else total,
         sample_values=samples,
+        min_value=min_val,
+        max_value=max_val,
     )
 
 

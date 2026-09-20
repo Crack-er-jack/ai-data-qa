@@ -228,8 +228,10 @@ def _render_answer(answer) -> None:
         answer: AgentAnswer object containing query results, plans, and metrics.
     """
     if answer.status == "clarification":
+        st.warning(answer.message)
         st.warning(f"Clarification needed: {answer.message}")
         return
+    if answer.status in {"error", "cannot_answer"}:
 
     if answer.status == "cannot_answer":
         st.info(f"Notice: {answer.message}")
@@ -238,6 +240,7 @@ def _render_answer(answer) -> None:
     if answer.status == "error":
         st.error(answer.message)
         if answer.errors:
+            with st.expander("Details"):
             with st.expander("Error details"):
                 for err in answer.errors:
                     st.code(err)
@@ -246,6 +249,13 @@ def _render_answer(answer) -> None:
     st.success("Computed from your uploaded data with DuckDB.")
     st.write(answer.message)
 
+    for i, result in enumerate(answer.results):
+        if result.kind == "scalar":
+            st.metric(result.scalar_label or result.title, result.text.split(": ", 1)[-1])
+        elif answer.viz_types[i : i + 1] == ["table"] or result.kind in {"tabular", "empty"}:
+            st.dataframe(result.dataframe, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(result.dataframe, use_container_width=True, hide_index=True)
     # Separate scalar KPI results from tabular/grouped results
     scalars = [res for res in answer.results if res.kind == "scalar"]
     non_scalars = [res for res in answer.results if res.kind != "scalar"]

@@ -125,6 +125,7 @@ def _extract_trailing_limit(sql: str) -> int | None:
 
 
 def re_has_limit(sql: str) -> bool:
+    import re
     """Check if query has a trailing limit (kept for backwards compatibility)."""
     return _extract_trailing_limit(sql) is not None
 
