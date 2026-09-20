@@ -1,0 +1,40 @@
+flowchart TD
+    U["User"] --> UI["Streamlit UI"]
+
+    UI --> FS["File Manager"]
+    FS --> PROF["Schema & Data Profiler"]
+    PROF --> SS["Session State"]
+
+    UI --> CB["Context Builder"]
+    SS --> CB
+
+    CB --> LLM["LLM Analytical Agent<br/>GPT-OSS 20B via Groq"]
+
+    LLM -->|"query_data(sql)"| QV["Query Validator"]
+
+    QV -->|"Valid read-only SQL"| DB["DuckDB<br/>Analytical Execution Engine"]
+    QV -->|"Invalid SQL"| RETRY["Bounded SQL Correction<br/>Max 1 retry"]
+    RETRY --> LLM
+
+    DB --> RR["Result Reducer<br/>Bounded rows / cells"]
+    RR --> LLM
+
+    DB --> RES["Result Layer"]
+
+    RES --> VIZ["Visualization Engine"]
+    RES --> ANS["Answer Formatter"]
+
+    LLM -->|"Interpretation / explanation"| ANS
+
+    VIZ --> UI
+    ANS --> UI
+
+    SS --> HIST["Conversation & Analysis State"]
+    HIST --> CB
+
+    PROF --> REL["Relationship Candidate Generator"]
+    REL --> CB
+
+    style LLM stroke-width:3px
+    style DB stroke-width:3px
+    style QV stroke-width:2px

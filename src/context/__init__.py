@@ -1,0 +1,1 @@
+"""Structured conversation / analysis state."""

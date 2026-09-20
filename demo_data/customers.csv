@@ -1,0 +1,25 @@
+customer_id,customer_name,region,segment,city,signup_date
+C001,Apex Retail,South,Enterprise,Austin,2023-11-02
+C002,Northwind Markets,North,Enterprise,Chicago,2024-01-18
+C003,Harbor Boutique,East,SMB,Boston,2024-02-09
+C004,Cascade Goods,West,SMB,Seattle,2024-03-14
+C005,Sunbelt Supply,South,SMB,Atlanta,2024-04-01
+C006,Lakeside Consumer,North,Consumer,Minneapolis,2024-04-22
+C007,Metro Home,East,Consumer,New York,2024-05-11
+C008,Pacific Outfitters,West,Enterprise,San Francisco,2024-06-03
+C009,Gulf Coast Traders,South,Enterprise,Houston,2024-06-28
+C010,Prairie Wholesale,North,SMB,Omaha,2024-07-19
+C011,Capitol Office,East,Enterprise,Washington,2024-08-08
+C012,Desert Direct,West,Consumer,Phoenix,2024-09-02
+C013,Bayou Basics,South,Consumer,New Orleans,2024-09-25
+C014,Great Lakes Co,North,Enterprise,Detroit,2024-10-16
+C015,Atlantic Clinic,East,SMB,Philadelphia,2024-11-05
+C016,Sierra Partners,West,SMB,Denver,2024-11-27
+C017,Peachtree Stores,South,SMB,Nashville,2025-01-09
+C018,Frontier Mart,North,Consumer,Fargo,2025-02-01
+C019,Liberty Gadgets,East,Consumer,Newark,2025-02-20
+C020,Redwood Labs,West,Enterprise,Portland,2025-03-12
+C021,Coastal Kitchen,South,Consumer,Tampa,2025-04-04
+C022,Iron Range Supply,North,SMB,Milwaukee,2025-05-15
+C023,Hudson Digital,East,Enterprise,Brooklyn,2025-06-07
+C024,Olympia Health,West,Enterprise,Los Angeles,2025-07-21

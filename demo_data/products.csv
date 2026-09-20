@@ -1,0 +1,13 @@
+product_id,product_name,category,unit_price
+P001,Analytics Pro,Software,1299.0
+P002,Analytics Starter,Software,349.0
+P003,Warehouse Scanner,Hardware,499.0
+P004,POS Terminal,Hardware,899.0
+P005,Support Plus,Services,199.0
+P006,Implementation Pack,Services,2499.0
+P007,Training Day,Services,799.0
+P008,Mobile Add-on,Software,149.0
+P009,Label Printer,Hardware,229.0
+P010,Premium Warranty,Services,129.0
+P011,Dashboard Suite,Software,649.0
+P012,Inventory Sensor,Hardware,179.0
