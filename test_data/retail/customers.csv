@@ -1,0 +1,61 @@
+customer_id,customer_name,segment,region,signup_date
+CUST-1001,James Smith,Consumer,North,2023-01-15
+CUST-1002,Mary Johnson,Small Business,North,2023-01-28
+CUST-1003,Robert Williams,Enterprise,North,2023-02-10
+CUST-1004,Patricia Brown,Consumer,South,2023-02-23
+CUST-1005,John Jones,Small Business,South,2023-03-08
+CUST-1006,Jennifer Garcia,Enterprise,South,2023-03-21
+CUST-1007,Michael Miller,Consumer,East,2023-04-03
+CUST-1008,Linda Davis,Small Business,East,2023-04-09
+CUST-1009,David Rodriguez,Enterprise,East,2023-04-22
+CUST-1010,Elizabeth Martinez,Consumer,West,2023-05-05
+CUST-1011,William Hernandez,Small Business,West,2023-05-18
+CUST-1012,Barbara Lopez,Enterprise,West,2023-05-31
+CUST-1013,Richard Gonzalez,Consumer,North,2023-06-13
+CUST-1014,Susan Wilson,Small Business,North,2023-06-26
+CUST-1015,Joseph Anderson,Enterprise,North,2023-07-02
+CUST-1016,Jessica Thomas,Consumer,South,2023-07-15
+CUST-1017,Thomas Taylor,Small Business,South,2023-07-28
+CUST-1018,Sarah Moore,Enterprise,South,2023-08-10
+CUST-1019,Charles Jackson,Consumer,East,2023-08-23
+CUST-1020,Karen Martin,Small Business,East,2023-09-05
+CUST-1021,Christopher Lee,Enterprise,East,2023-09-18
+CUST-1022,Nancy Perez,Consumer,West,2023-09-24
+CUST-1023,Daniel Thompson,Small Business,West,2023-10-07
+CUST-1024,Lisa White,Enterprise,West,2023-10-20
+CUST-1025,Matthew Harris,Consumer,North,2023-11-02
+CUST-1026,Margaret Sanchez,Small Business,North,2023-11-15
+CUST-1027,Anthony Clark,Enterprise,North,2023-11-28
+CUST-1028,Betty Ramirez,Consumer,South,2023-12-11
+CUST-1029,Mark Lewis,Small Business,South,2023-12-17
+CUST-1030,Sandra Robinson,Enterprise,South,2023-12-30
+CUST-1031,Donald Walker,Consumer,East,2024-01-12
+CUST-1032,Ashley Young,Small Business,East,2024-01-25
+CUST-1033,Steven Allen,Enterprise,East,2024-02-07
+CUST-1034,Kimberly King,Consumer,West,2024-02-20
+CUST-1035,Paul Wright,Small Business,West,2024-03-04
+CUST-1036,Emily Scott,Enterprise,West,2024-03-10
+CUST-1037,Andrew Torres,Consumer,North,2024-03-23
+CUST-1038,Donna Nguyen,Small Business,North,2024-04-05
+CUST-1039,Joshua Hill,Enterprise,North,2024-04-18
+CUST-1040,Michelle Flores,Consumer,South,2024-05-01
+CUST-1041,Kenneth Green,Small Business,South,2024-05-14
+CUST-1042,Carol Adams,Enterprise,South,2024-05-27
+CUST-1043,Kevin Nelson,Consumer,East,2024-06-02
+CUST-1044,Amanda Baker,Small Business,East,2024-06-15
+CUST-1045,Brian Hall,Enterprise,East,2024-06-28
+CUST-1046,Melissa Rivera,Consumer,West,2024-07-11
+CUST-1047,George Campbell,Small Business,West,2024-07-24
+CUST-1048,Deborah Mitchell,Enterprise,West,2024-08-06
+CUST-1049,Edward Carter,Consumer,North,2024-08-19
+CUST-1050,Stephanie Roberts,Small Business,North,2024-08-25
+CUST-1051,Ronald Gomez,Enterprise,North,2024-09-07
+CUST-1052,Rebecca Phillips,Consumer,South,2024-09-20
+CUST-1053,Timothy Evans,Small Business,South,2024-10-03
+CUST-1054,Sharon Turner,Enterprise,South,2024-10-16
+CUST-1055,Jason Diaz,Consumer,East,2024-10-29
+CUST-1056,Laura Parker,Small Business,East,2024-11-11
+CUST-1057,Jeffrey Cruz,Enterprise,East,2024-11-17
+CUST-1058,Cynthia Edwards,Consumer,West,2024-11-30
+CUST-1059,Ryan Collins,Small Business,West,2024-12-13
+CUST-1060,Kathleen Reyes,Enterprise,West,2024-12-26

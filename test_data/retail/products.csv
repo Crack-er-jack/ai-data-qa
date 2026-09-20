@@ -1,0 +1,26 @@
+product_id,product_name,category,subcategory,unit_cost
+HW-01,Enterprise Server Pro,Hardware,Servers,1200.0
+HW-02,Developer Laptop 16,Hardware,Laptops,850.0
+HW-03,Standard Office PC,Hardware,Desktops,400.0
+HW-04,Network Switch 48-Port,Hardware,Networking,300.0
+HW-05,Enterprise Router XR,Hardware,Networking,450.0
+HW-06,Storage Array 10TB,Hardware,Storage,600.0
+SW-01,Cloud Analytics Annual License,Software,Analytics,200.0
+SW-02,Security Suite Pro License,Software,Security,150.0
+SW-03,Database Enterprise Edition,Software,Database,500.0
+SW-04,Productivity Workspace Suite,Software,Productivity,80.0
+SW-05,Developer IDE Subscription,Software,DevTools,100.0
+SW-06,CRM Platform Seat,Software,CRM,250.0
+AC-01,Ergonomic Mechanical Keyboard,Accessories,Peripherals,40.0
+AC-02,Precision Wireless Mouse,Accessories,Peripherals,20.0
+AC-03,4K UltraSharp 27-inch Monitor,Accessories,Displays,180.0
+AC-04,Dual-Display Docking Station,Accessories,Docks,60.0
+AC-05,Noise-Cancelling Headset,Accessories,Audio,50.0
+AC-06,USB-C Multi-Port Hub,Accessories,Cables & Hubs,15.0
+AC-07,Webcam 1080p HD,Accessories,Audio & Video,30.0
+SV-01,24/7 Enterprise Platinum Support,Services,Support,300.0
+SV-02,Onboarding & Implementation Consulting,Services,Consulting,800.0
+SV-03,Cloud Architecture Migration Service,Services,Consulting,1500.0
+SV-04,Security Audit & Pen Testing,Services,Security Services,1200.0
+SV-05,Data Pipeline Engineering Support,Services,Data Services,900.0
+SV-06,Custom Integrations Delivery,Services,Engineering,1000.0

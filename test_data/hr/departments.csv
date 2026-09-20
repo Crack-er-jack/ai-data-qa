@@ -1,0 +1,8 @@
+department_id,department_name,location,cost_center
+D01,Engineering,"San Francisco, CA",CC-100
+D02,Sales,"New York, NY",CC-200
+D03,Marketing,"Chicago, IL",CC-300
+D04,Finance,"New York, NY",CC-400
+D05,Operations,"Austin, TX",CC-500
+D06,HR,"Chicago, IL",CC-600
+D07,Customer Success,"Austin, TX",CC-700

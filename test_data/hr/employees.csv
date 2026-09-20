@@ -1,0 +1,51 @@
+employee_id,employee_name,department_id,job_level,location,hire_date,employment_status
+EMP-2001,Alice Johnson,D01,L1,"San Francisco, CA",2021-03-01,Active
+EMP-2002,Bob Smith,D02,L2,"New York, NY",2021-04-08,Active
+EMP-2003,Charlie Davis,D03,L2,"Chicago, IL",2021-05-16,Active
+EMP-2004,Diana Evans,D04,L2,"Austin, TX",2021-06-23,Active
+EMP-2005,Ethan Harris,D05,L3,Remote,2021-07-31,Active
+EMP-2006,Fiona Clark,D06,L3,"San Francisco, CA",2021-08-23,Active
+EMP-2007,George Lewis,D07,L3,"New York, NY",2021-09-30,Active
+EMP-2008,Hannah Walker,D01,L4,"Chicago, IL",2021-11-07,Active
+EMP-2009,Ian Robinson,D02,L4,"Austin, TX",2021-12-15,Active
+EMP-2010,Julia Young,D03,L5,Remote,2022-01-22,Active
+EMP-2011,Kevin Allen,D04,L1,"San Francisco, CA",2022-02-14,Active
+EMP-2012,Laura King,D05,L2,"New York, NY",2022-03-24,Active
+EMP-2013,Michael Wright,D06,L2,"Chicago, IL",2022-05-01,Active
+EMP-2014,Nina Scott,D07,L2,"Austin, TX",2022-06-08,Active
+EMP-2015,Oscar Torres,D01,L3,Remote,2022-07-16,Active
+EMP-2016,Paula Nguyen,D02,L3,"San Francisco, CA",2022-08-08,Active
+EMP-2017,Quinn Hill,D03,L3,"New York, NY",2022-09-15,Active
+EMP-2018,Rachel Flores,D04,L4,"Chicago, IL",2022-10-23,Active
+EMP-2019,Sam Green,D05,L4,"Austin, TX",2022-11-30,Active
+EMP-2020,Tina Adams,D06,L5,Remote,2023-01-07,Active
+EMP-2021,Uma Nelson,D07,L1,"San Francisco, CA",2023-01-30,Active
+EMP-2022,Victor Baker,D01,L2,"New York, NY",2023-03-09,Active
+EMP-2023,Wendy Hall,D02,L2,"Chicago, IL",2023-04-16,Active
+EMP-2024,Xavier Rivera,D03,L2,"Austin, TX",2023-05-24,Active
+EMP-2025,Yvonne Campbell,D04,L3,Remote,2023-07-01,Active
+EMP-2026,Zachary Mitchell,D05,L3,"San Francisco, CA",2023-07-24,Active
+EMP-2027,Abigail Carter,D06,L3,"New York, NY",2023-08-31,Active
+EMP-2028,Brian Roberts,D07,L4,"Chicago, IL",2023-10-08,Active
+EMP-2029,Chloe Gomez,D01,L4,"Austin, TX",2023-11-15,Active
+EMP-2030,Derek Phillips,D02,L5,Remote,2023-12-23,Active
+EMP-2031,Elena Evans,D03,L1,"San Francisco, CA",2024-01-15,Active
+EMP-2032,Felix Turner,D04,L2,"New York, NY",2024-02-22,Active
+EMP-2033,Grace Diaz,D05,L2,"Chicago, IL",2024-03-31,Active
+EMP-2034,Henry Parker,D06,L2,"Austin, TX",2024-05-08,Active
+EMP-2035,Isabel Cruz,D07,L3,Remote,2024-06-15,Active
+EMP-2036,Jack Edwards,D01,L3,"San Francisco, CA",2024-07-08,Active
+EMP-2037,Kendra Collins,D02,L3,"New York, NY",2024-08-15,Active
+EMP-2038,Liam Reyes,D03,L4,"Chicago, IL",2024-09-22,Active
+EMP-2039,Mia Stewart,D04,L4,"Austin, TX",2024-10-30,Exited
+EMP-2040,Noah Morris,D05,L5,Remote,2024-12-07,Exited
+EMP-2041,Olivia Morales,D06,L1,"San Francisco, CA",2024-12-30,Exited
+EMP-2042,Peter Murphy,D07,L2,"New York, NY",2025-02-06,Exited
+EMP-2043,Quincy Cook,D01,L2,"Chicago, IL",2025-03-16,Exited
+EMP-2044,Ruby Rogers,D02,L2,"Austin, TX",2025-04-23,Exited
+EMP-2045,Sean Morgan,D03,L3,Remote,2025-05-31,Exited
+EMP-2046,Tara Peterson,D04,L3,"San Francisco, CA",2025-06-23,Exited
+EMP-2047,Uriah Cooper,D05,L3,"New York, NY",2025-07-31,On Leave
+EMP-2048,Valerie Reed,D06,L4,"Chicago, IL",2025-09-07,On Leave
+EMP-2049,Will Bailey,D07,L4,"Austin, TX",2025-10-15,On Leave
+EMP-2050,Xena Bell,D01,L5,Remote,2025-11-22,On Leave
