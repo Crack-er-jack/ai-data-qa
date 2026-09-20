@@ -329,3 +329,4 @@ def test_bug2_fidelity_enforcement_rejects_missing_category_filter():
     # Auditor must flag that the category filter is missing from SQL
     assert len(errors) > 0
     assert "category" in errors[0] or "Hardware" in errors[0]
+

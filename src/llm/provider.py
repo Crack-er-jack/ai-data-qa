@@ -30,6 +30,7 @@ Return ONLY valid JSON with this schema:
   "time_period": string or null
 }
 
+Rules:
 - SQL FIDELITY MANDATE:
   * Every filter, time_period, or category specified in the plan MUST appear as an explicit WHERE predicate in each SQL query. Never omit declared filters from SQL.
   * If the question or plan specifies a time_period (e.g. 'last quarter', '2025', 'current year'), you MUST inspect `temporal_context` and use its exact date bounds/predicate in the SQL WHERE clause. Do not invent dates.

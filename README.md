@@ -1,9 +1,7 @@
 # AI Data Q&A
 
-A Streamlit app for non-technical users to upload CSV/Excel files and ask analytical questions in natural language.
 A Streamlit web application for non-technical business users to upload CSV/Excel files and ask analytical questions in natural language.
 
-Numbers are never invented by the model. GPT-OSS 20B via Groq interprets the question and proposes SQL. DuckDB executes read-only SQL against the uploaded tables. The application validates SQL, bounds results, and renders answers/charts.
 > **Core Architectural Principle:**  
 > *"LLM interprets and plans; DuckDB is the source of truth for computation."*  
 > Numbers are never invented by the model. GPT-OSS 20B via Groq interprets user intent and generates read-only SQL. DuckDB executes the queries deterministically against uploaded datasets. The application validates SQL safety, bounds output sizes, and renders answers and Plotly charts.
