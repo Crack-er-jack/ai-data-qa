@@ -60,6 +60,9 @@ def format_query_result(result: QueryResult, purpose: str = "Result") -> Formatt
         )
     if kind == "scalar":
         numeric_cols = [c for c in frame.columns if pd.api.types.is_numeric_dtype(frame[c])]
+        label = numeric_cols[0] if numeric_cols else frame.columns[0]
+        value = frame.iloc[0][label]
+        pretty = _pretty_label(label)
         non_numeric_cols = [c for c in frame.columns if c not in numeric_cols]
         num_label = numeric_cols[0] if numeric_cols else frame.columns[0]
         num_val = frame.iloc[0][num_label]
@@ -87,10 +90,13 @@ def format_query_result(result: QueryResult, purpose: str = "Result") -> Formatt
         return FormattedResult(
             kind="scalar",
             title=purpose,
+            text=f"{pretty}: {_format_number(value)}",
             text=f"{pretty_num}: {_format_number(num_val)}",
             dataframe=frame,
             sql=result.sql,
             truncated=result.truncated,
+            scalar_value=value,
+            scalar_label=pretty,
             scalar_value=num_val,
             scalar_label=pretty_num,
         )

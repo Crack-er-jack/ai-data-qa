@@ -1,165 +1,216 @@
 # AI Data Q&A
 
-A Streamlit web application for non-technical business users to upload CSV/Excel files and ask analytical questions in natural language.
+A Streamlit web application for business users to upload arbitrary CSV/Excel datasets and ask analytical questions in natural language.
 
 > **Core Architectural Principle:**  
-> *"LLM interprets and plans; DuckDB is the source of truth for computation."*  
-> Numbers are never invented by the model. GPT-OSS 20B via Groq interprets user intent and generates read-only SQL. DuckDB executes the queries deterministically against uploaded datasets. The application validates SQL safety, bounds output sizes, and renders answers and Plotly charts.
+> *"The LLM interprets and plans; DuckDB is the sole source of truth for numerical computation."*  
+> Numbers, rankings, and totals are never fabricated by the model. GPT-OSS 20B (via Groq) interprets user intent and generates DuckDB-compatible SQL. DuckDB computes the numbers directly against the uploaded tables. The application validates SQL safety, bounds output sizes, and renders answers, KPI metric cards, data tables, and Plotly visualizations.
 
-## Problem
+---
 
-Business users can describe the question they care about, but they should not have to write joins, remember column names, or trust a chatbot that guesses totals. Spreadsheet tools also break down once analysis spans several files.
+## Tech Stack
 
-## Solution
+| Layer | Technology | Version | Purpose & Rationale |
+| :--- | :--- | :--- | :--- |
+| **Frontend / UI** | [Streamlit](https://streamlit.io/) | `>=1.32.0` | Rapid, interactive web interface with sidebar dataset preview, responsive metric cards, expandable SQL audit transparency, and dark/light mode compatibility. |
+| **Analytical Engine** | [DuckDB](https://duckdb.org/) | `>=1.1.0` | In-process columnar analytical database. Zero-latency SQL execution directly on Pandas DataFrames without external database infrastructure. |
+| **Data Ingestion** | [Pandas](https://pandas.pydata.org/) | `>=2.1.0` | Robust tabular parsing, schema inspection, cell sanitization, and data normalization for CSV and Excel files. |
+| **Excel Support** | [openpyxl](https://openpyxl.readthedocs.io/), [xlrd](https://xlrd.readthedocs.io/) | `>=3.1.0`, `>=2.0.1` | Support for `.xlsx` and legacy `.xls` workbooks with multi-sheet detection. |
+| **LLM Inference** | [Groq Python SDK](https://github.com/groq/groq-python) | `>=0.9.0` | Ultra-fast JSON planning using `openai/gpt-oss-20b` (or configurable alternatives) with strictly enforced JSON schemas. |
+| **Visualizations** | [Plotly](https://plotly.com/python/) | `>=5.18.0` | Interactive charts (bar charts, time-series lines, distributions) selected deterministically based on result shapes. |
+| **Configuration** | [pydantic-settings](https://docs.pydantic.dev/), [python-dotenv](https://github.com/theskumar/python-dotenv) | `>=2.6.0`, `>=1.0.0` | Type-safe environment variable parsing with validation and `.env` fallback. |
+| **Testing** | [pytest](https://pytest.org/) | `>=8.0.0` | Comprehensive regression test suite covering ingestion, SQL safety, context retention, DuckDB execution, and fidelity. |
 
-1. User uploads one or more CSV/Excel files in a session (more files can be added later without restarting).
-2. Files are ingested with Pandas, given safe table names, profiled, and registered in DuckDB.
-3. Lightweight heuristics propose join candidates (`customer_id`, `product_id`, overlap, types).
-4. For each question, a compact context packet (schema, relationships, structured follow-up state) is sent to the LLM — not the raw data.
-5. The LLM returns a structured plan with SQL. The app validates it, runs it in DuckDB (one correction retry), and formats DuckDB results for the UI.
+> **What We Explicitly Avoid:** No LangChain, no heavy agent frameworks, no vector databases, no arbitrary Python `eval`/`exec`, and no external database servers.
 
-## Architecture
+---
+
+## System Architecture
 
 ```
-User question
-  → Context builder (schema + candidates + analytical state)
-  → LLM plan (SQL + visualization hint + explanation)
-  → query_data(sql)  [validate → DuckDB → bounded rows]
-  → Result layer + Plotly (compatibility-checked)
-  → Answer + optional “How was this calculated?”
+User Question (Natural Language)
+  │
+  ├── 1. Discoverability & Metadata Check
+  │      └── Directly answers "What tables are loaded?", "Describe schema", etc. without LLM SQL
+  │
+  ├── 2. Context Builder
+  │      ├── Compact Dataset Profiles (column names, types, value samples, min/max dates)
+  │      ├── Inferred Join Candidates (cross-table key matching)
+  │      ├── Analytical State (previous filters, metrics, time periods, clarifications)
+  │      └── Ground-Truth Temporal Context (exact date bounds derived from dataset)
+  │
+  ├── 3. LLM Planning (Groq)
+  │      └── Structured JSON: Intent, SQL query, explanation, expected shape, viz hint
+  │
+  ├── 4. SQL Normalization & Safety Audit
+  │      ├── AST validation (read-only SELECT/WITH statements, no DDL/DML or file scans)
+  │      ├── Date function normalization (automatic TRY_CAST on string dates for DuckDB)
+  │      ├── Fidelity audit (verifies filters, categories, and date constraints match plan)
+  │      └── Auto-correction retry loop if syntax or fidelity validation fails
+  │
+  ├── 5. Deterministic DuckDB Execution
+  │      └── Bounded execution (enforces MAX_RESULT_ROWS and cell truncation)
+  │
+  └── 6. Result Layer & UI Presentation
+         ├── Metric Cards & Entity Labels (e.g. Segment: Consumer, Revenue: $37,218.25)
+         ├── Plotly Chart (if time-series or multi-category comparison)
+         ├── Interactive Data Table Preview
+         └── "How was this calculated?" Expander (tables used, active filters, exact SQL)
 ```
 
-The Phase 2 diagram lives in `docs/architecture.md`.
+---
 
-## Stack
+## Prerequisites
 
-| Layer | Choice |
-| --- | --- |
-| UI | Streamlit |
-| Ingestion | Pandas |
-| Analytics | DuckDB |
-| LLM | Groq `openai/gpt-oss-20b` |
-| Charts | Plotly |
-| Session | `st.session_state` |
-| Config | `.env` / Streamlit secrets |
+- **Python 3.10 to 3.12** installed on your system.
+- A free **[Groq API Key](https://console.groq.com/)** to enable natural language planning.
 
-Not used: LangChain, agents frameworks, vector DBs, RAG, arbitrary Python execution.
+---
 
-## Local setup
+## Local Setup
+
+### 1. Clone or Open the Repository
 
 ```bash
+git clone https://github.com/your-org/Darwinbox_FDE.git
+cd Darwinbox_FDE
+```
+
+### 2. Create and Activate a Virtual Environment
+
+**Windows (PowerShell):**
+```powershell
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-copy .env.example .env   # or: cp .env.example .env
+.\.venv\Scripts\Activate.ps1
 ```
 
-Put a Groq API key in `.env`. Demo CSVs are already under `demo_data/`. To regenerate them:
+**macOS / Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
 
 ```bash
-python -m src.demo.generate_demo
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-## Environment variables / secrets
+### 4. Configure Environment Variables
 
-| Name | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `GROQ_API_KEY` | Yes, to ask questions | — | Groq API key |
-| `LLM_PROVIDER` | No | `groq` | Provider id |
-| `LLM_MODEL` | No | `openai/gpt-oss-20b` | Groq model |
-| `LLM_TEMPERATURE` | No | `0` | Planning temperature |
-| `MAX_FILE_SIZE_MB` | No | `10` | Per-file upload cap |
-| `MAX_SESSION_SIZE_MB` | No | `50` | Total upload cap per session |
-| `MAX_RESULT_ROWS` | No | `200` | UI result cap |
-| `MAX_LLM_RESULT_ROWS` | No | `50` | Preview rows if a repair call needs them |
-| `MAX_SQL_CORRECTION_RETRIES` | No | `1` | Failed SQL repair attempts |
-| `MAX_ANALYTICAL_QUERIES` | No | `3` | SQL statements per user question |
+Copy the template file to `.env`:
 
-On Streamlit Community Cloud, set the same keys in **App settings → Secrets**.
+**Windows:**
+```powershell
+copy .env.example .env
+```
 
-## How to run
+**macOS / Linux:**
+```bash
+cp .env.example .env
+```
+
+Open `.env` in any text editor and provide your Groq API key:
+```ini
+GROQ_API_KEY=gsk_your_actual_groq_api_key_here
+```
+
+---
+
+## Environment Variables & Configuration
+
+All execution bounds and model settings have safe defaults built-in. You only need to set `GROQ_API_KEY` unless you wish to customize runtime behavior:
+
+| Variable | Required | Default | Description |
+| :--- | :---: | :---: | :--- |
+| `GROQ_API_KEY` | **Yes** | — | Groq Cloud API key for natural language planning. |
+| `LLM_PROVIDER` | No | `groq` | LLM backend provider id (`groq`). |
+| `LLM_MODEL` | No | `openai/gpt-oss-20b` | Model identifier on Groq (fast, high-fidelity planning). |
+| `LLM_TEMPERATURE` | No | `0.0` | Sampling temperature (`0.0` ensures deterministic SQL plans). |
+| `MAX_FILE_SIZE_MB` | No | `10` | Maximum allowed size per uploaded file in megabytes. |
+| `MAX_SESSION_SIZE_MB`| No | `50` | Maximum cumulative upload size per browser session in megabytes. |
+| `MAX_RESULT_ROWS` | No | `200` | Maximum rows fetched from DuckDB and displayed in the UI. |
+| `MAX_LLM_RESULT_ROWS` | No | `50` | Maximum sample rows passed back to the LLM during repair loops. |
+| `MAX_SQL_CORRECTION_RETRIES` | No | `1` | Number of automatic repair attempts if DuckDB execution errors. |
+| `MAX_ANALYTICAL_QUERIES` | No | `3` | Maximum SQL statements allowed per user turn. |
+
+---
+
+## Running the Application
+
+Launch the Streamlit app:
 
 ```bash
 streamlit run app.py
 ```
 
-Open the local URL Streamlit prints (usually `http://localhost:8501`).
+Streamlit will print the local server URL (typically `http://localhost:8501`). Open it in your web browser.
 
-## How to use
+---
 
-1. In the sidebar, upload CSV/XLSX files **or** click **Load demo datasets**.
-2. Confirm tables, row counts, and any candidate relationships.
-3. Ask a question. Follow-ups reuse structured state (metric, filters, period), not the full chat transcript.
-4. Add another file in the same session and keep asking.
-5. Open **How was this calculated?** to inspect tables, filters, and SQL.
-6. **Reset session** clears uploads and analysis state.
+## How to Use the App
 
-Limits are shown in the sidebar: 10 MB per file, 50 MB per session (configurable).
+1. **Load Data**:
+   - In the sidebar, click **"Upload CSV or Excel files"** to load your own datasets, **OR**
+   - Click **"Load demo datasets"** to immediately load sample retail data (`customers.csv`, `orders.csv`, `products.csv`).
+2. **Inspect Session Datasets**:
+   - Expand the dataset previews in the sidebar to review column names, inferred data types, and first 5 rows.
+   - Review detected candidate cross-table relationships (e.g. `orders.customer_id` → `customers.customer_id`).
+3. **Ask Questions**:
+   - Type a question into the prompt input or click one of the suggested query cards under **"💡 Try asking"**.
+4. **Follow-Up Questions**:
+   - Ask elliptical follow-ups like *"What about South?"*, *"And in 2026?"*, or *"Break that down by month"*. The agent preserves prior metrics, filters, and tables without needing full conversation transcripts.
+5. **Inspect Execution Details**:
+   - Open **"How was this calculated?"** beneath any answer to inspect the exact tables used, active WHERE constraints, and executed SQL query.
+6. **Reset Session**:
+   - Click **"Reset session"** in the sidebar at any time to clear loaded files and analysis history.
 
-## Example questions (demo data)
+---
 
-The demo is a small commerce model: `customers` ↔ `orders` ↔ `products`, with `line_total` on each order line.
+## Example Questions (Demo Data)
 
-- What was our total revenue last quarter?
-- Which region generated the most revenue?
-- What about South?
-- Compare revenue across regions.
-- Show me the monthly revenue trend.
-- Give me total revenue, average order value, and revenue by region.
-- Which product category sold the most?
+- **Total Metrics**: *"What is the total revenue?"* *(automatically filters `status = 'completed'`)*
+- **Entity Ranking**: *"Which customer segment generated the most revenue from Hardware products?"*
+- **Cross-Table Joins**: *"Which region generated the most revenue?"*
+- **Elliptical Follow-ups**: *"What about South?"* followed by *"And for Hardware?"*
+- **Time-Series Trends**: *"Show me monthly revenue over time."*
+- **Multi-Category Comparison**: *"Compare revenue across regions."*
+- **Dataset Discovery**: *"What datasets are loaded?"* or *"What columns are available?"*
 
-Completed orders contribute `line_total`; refunded rows are zeroed so filters on `status` matter.
+---
 
-## Testing
+## Running Tests
+
+Run the full automated test suite using `pytest`:
 
 ```bash
 pytest
 ```
 
-Coverage is focused on: file validation, table names, profiling, relationship heuristics, SQL safety, DuckDB execution, result limits, visualization choice, follow-up state, and one end-to-end path over the demo CSVs (scripted planner, so tests do not call Groq).
-
-## Deployment notes (Streamlit Community Cloud)
-
-1. Push this repo to GitHub (include `app.py` and `requirements.txt` at the repo root).
-2. At [share.streamlit.io](https://share.streamlit.io), create an app from the repo, main file `app.py`.
-3. Add secrets:
-
-```toml
-GROQ_API_KEY = "..."
-LLM_PROVIDER = "groq"
-LLM_MODEL = "openai/gpt-oss-20b"
+To run tests with detailed output:
+```bash
+pytest -v
 ```
 
-4. Deploy. Community Cloud will `pip install -r requirements.txt`.
-5. Upload size is still enforced in-app; Streamlit Cloud also has its own request limits.
+The test suite covers:
+- Ingestion pipelines, upload sanitization, and size caps.
+- Profiling engines, datetime detection, and join candidate heuristics.
+- Context building and temporal bounds resolution.
+- SQL security validation (rejecting DDL, DML, file scans, multiple statements).
+- DuckDB date casting (`strftime`, `TRY_CAST`) and bounded execution.
+- Context retention across follow-ups and clarification flows.
+- Result classification, entity/scalar preservation, and visualization builders.
 
-Do not commit `.env` or `.streamlit/secrets.toml`.
+---
 
-## Design decisions
+## Deployment (Streamlit Community Cloud)
 
-- **SQL is the tool, not a custom DSL.** The only analytical interface is `query_data(sql)`.
-- **Structured state instead of full transcripts.** Follow-ups like “What about South?” update filters while keeping the previous metric.
-- **Bounded loop.** At most three SQL executions per question and one repair attempt. No autonomous tool-calling agent.
-- **Hybrid answers.** DuckDB supplies values; the LLM may add a short explanation from the same planning call. No extra rewrite call.
-- **Visualization is checked in the backend.** A suggested bar chart on a single KPI is replaced with a KPI/metric display.
-
-## Known limitations
-
-- Column validation is practical, not a full SQL parser. DuckDB still rejects unknown objects at execution time.
-- Join discovery is heuristic. Unusual keys may need a clearer question.
-- Excel workbooks with many sheets become multiple tables; very messy headers may need cleaning before upload.
-- “Last quarter” depends on the LLM’s date interpretation plus the dates present in the file.
-- Large text cells are clipped; result sets are truncated.
-- The Groq model can still propose incorrect SQL; the retry budget is one attempt, then the UI explains the failure.
-
-## Future improvements
-
-- Persist sessions beyond a browser tab.
-- Stronger date-period helpers (explicit fiscal calendars).
-- Optional saved questions / exported SQL.
-- Richer semantic types (currency, geo) in the profiler.
-- User-confirmed joins when heuristics are weak.
+1. Push your repository to GitHub.
+2. Visit [share.streamlit.io](https://share.streamlit.io) and select your repository.
+3. Set the **Main file path** to `app.py`.
+4. In **Advanced Settings → Secrets**, provide your API key:
+   ```toml
+   GROQ_API_KEY = "gsk_your_groq_api_key"
+   ```
+5. Click **Deploy**. Streamlit Cloud will automatically install dependencies from `requirements.txt`.

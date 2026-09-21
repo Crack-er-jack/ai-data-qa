@@ -290,6 +290,15 @@ def _render_answer(answer) -> None:
 
     # Display KPI metrics side-by-side if multiple
     if scalars:
+        cols = st.columns(min(len(scalars), 4))
+        for idx, scalar_res in enumerate(scalars):
+            with cols[idx % len(cols)]:
+                label = scalar_res.scalar_label or scalar_res.title
+                if ": " in scalar_res.text:
+                    display_val = scalar_res.text.split(": ", 1)[-1]
+                else:
+                    display_val = str(scalar_res.scalar_value)
+                st.metric(label=label, value=display_val)
         metric_cards: list[tuple[str, str]] = []
         for scalar_res in scalars:
             if scalar_res.entity_label and scalar_res.entity_value is not None:
@@ -311,6 +320,7 @@ def _render_answer(answer) -> None:
     for figure in answer.visualizations:
         st.plotly_chart(figure, use_container_width=True)
 
+    # Render data tables for non-scalar results
     # Render data tables for non-scalar results and entity-lookup results
     for res in non_scalars:
         if not res.dataframe.empty:
