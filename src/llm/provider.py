@@ -45,6 +45,7 @@ Rules:
 - Dependent analysis may use CTEs or subqueries in one statement.
 - If the data cannot answer the question, set cannot_answer=true and do not invent SQL.
 - If the question asks for a metric or trend 'over time' without specifying granularity, DEFAULT to monthly aggregation (e.g. strftime('%Y-%m', date_col)) and DO NOT ask for clarification.
+- REVENUE / SALES STATUS DEFAULT: When the user asks for total revenue, sales, or line_total, and an order status column exists where 'completed' is a valid status, you MUST default to completed orders (e.g. status = 'completed' in the WHERE clause). DO NOT ask for clarification about whether to include only completed orders unless the user explicitly mentions another status.
 - When the user provides a follow-up or answers a clarification (e.g. 'per month', 'daily', 'by region'), combine their answer with the previous question and metric in analytical_state to produce the query immediately instead of asking for clarification again.
 - Only set clarification_needed=true if the query is fundamentally uninterpretable or missing required entities that cannot be inferred.
 - SQL must be a single read-only SELECT or WITH statement.

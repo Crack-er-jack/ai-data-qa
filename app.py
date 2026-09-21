@@ -63,6 +63,8 @@ def _render_sidebar(session):
         if st.button("Load demo datasets", use_container_width=True):
             session = _load_demo(session)
             persist_to_streamlit(st.session_state, session)
+            st.session_state.pop("_latest_answer", None)
+            st.session_state.pop("user_query_input", None)
             st.rerun()
 
     st.subheader("Current datasets")
@@ -105,6 +107,8 @@ def _render_sidebar(session):
     if st.button("Reset session", use_container_width=True):
         session = empty_session()
         persist_to_streamlit(st.session_state, session)
+        st.session_state.pop("_latest_answer", None)
+        st.session_state.pop("user_query_input", None)
         st.rerun()
     return session
 

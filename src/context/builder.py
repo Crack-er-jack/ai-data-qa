@@ -52,6 +52,16 @@ def build_context(
             "When the user answers a clarification question (e.g. 'per month', 'daily', 'South'), apply that answer to the previous question and metric rather than asking for clarification again.",
         ],
     }
+    status_default = resolve_revenue_status_default(question, profiles)
+    if status_default:
+        tbl, col, val = status_default
+        payload["default_filters"] = {col: val}
+        payload["notes"].append(
+            f"REVENUE STATUS MANDATE: The user is asking for revenue/sales. Filter for completed orders using "
+            f"`{col} = '{val}'` in the WHERE clause. "
+            f"Do NOT ask for clarification about whether to include completed orders."
+        )
+
     if temporal:
         payload["temporal_context"] = temporal
 
@@ -198,3 +208,54 @@ def _relevant_state(question: str, state: AnalyticalState) -> dict[str, Any]:
     if state.last_sql:
         data["previous_sql"] = state.last_sql[:2]
     return data
+
+
+def resolve_revenue_status_default(
+    question: str, profiles: list[TableProfile]
+) -> tuple[str, str, str] | None:
+    """Determine if a revenue/sales question should default to completed orders.
+
+    Identifies if:
+    1. The user asks for total revenue, sales, or line_total.
+    2. An order status column exists across loaded dataset profiles.
+    3. 'completed' is a valid status in that column's samples.
+    4. The user did not explicitly request a different order status.
+
+    Args:
+        question: The natural language user query.
+        profiles: Active dataset table profiles.
+
+    Returns:
+        A tuple of (table_name, column_name, completed_literal) if applicable,
+        or None.
+    """
+    q_lower = (question or "").lower()
+    revenue_terms = ("revenue", "sales", "line_total", "line total", "total spent")
+    if not any(term in q_lower for term in revenue_terms):
+        return None
+
+    # Check if user explicitly mentioned another status
+    other_statuses = (
+        "refund",
+        "cancel",
+        "pending",
+        "failed",
+        "returned",
+        "draft",
+        "all status",
+        "any status",
+        "status =",
+    )
+    if any(term in q_lower for term in other_statuses):
+        return None
+
+    for profile in profiles:
+        for col in profile.columns:
+            col_l = col.name.lower()
+            if "status" in col_l:
+                for sample in col.sample_values:
+                    if sample.strip().lower() == "completed":
+                        return profile.table_name, col.name, sample.strip()
+
+    return None
+

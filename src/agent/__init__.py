@@ -9,7 +9,7 @@ from typing import Any, Protocol
 import duckdb
 
 from src.constants import MAX_ANALYTICAL_QUERIES, MAX_SQL_CORRECTION_RETRIES
-from src.context.builder import build_context
+from src.context.builder import build_context, resolve_revenue_status_default
 from src.context.state import AnalyticalState, looks_like_follow_up, merge_state
 from src.errors import LlmError
 from src.llm.provider import GroqProvider
@@ -105,6 +105,69 @@ def run_analysis(
             errors=[str(exc)],
             state=state,
         )
+
+    # Apply narrow deterministic default to completed orders for revenue/sales metrics
+    status_default = resolve_revenue_status_default(question, profiles)
+    if status_default:
+        tbl, col, val = status_default
+        # If the planner requested clarification regarding order completion or status, override it
+        if plan.clarification_needed and (
+            not plan.clarification_question
+            or any(
+                w in (plan.clarification_question or "").lower()
+                for w in ("completed", "status", "order", "include", "only")
+            )
+        ):
+            try:
+                repaired = planner.plan(
+                    context,
+                    question,
+                    repair=(
+                        f"Do NOT ask for clarification. Proceed with the query filtering "
+                        f"{col} = '{val}'."
+                    ),
+                )
+                if not repaired.clarification_needed and repaired.sql_requests:
+                    plan = repaired
+            except Exception:
+                pass
+
+            if plan.clarification_needed:
+                plan.clarification_needed = False
+                plan.clarification_question = None
+
+            if plan.filters is None:
+                plan.filters = {}
+            plan.filters[col] = val
+
+            # If sql_requests is empty, synthesize direct revenue query
+            valid_sql_requests = [req for req in plan.sql_requests if req.sql.strip()]
+            if not valid_sql_requests:
+                from src.llm.schemas import SqlRequest
+
+                target_profile = next((p for p in profiles if p.table_name == tbl), None)
+                num_col = "line_total"
+                if target_profile:
+                    for c in target_profile.columns:
+                        if c.name.lower() in {"line_total", "total_price", "amount", "revenue", "sales"}:
+                            num_col = c.name
+                            break
+                plan.sql_requests = [
+                    SqlRequest(
+                        sql=f"SELECT SUM({num_col}) AS total_revenue FROM {tbl} WHERE {col} = '{val}'",
+                        description="Total revenue for completed orders",
+                    )
+                ]
+                plan.metric = "revenue"
+                plan.explanation = "Total revenue from completed orders."
+        elif not plan.clarification_needed and not plan.cannot_answer:
+            # If the planner generated SQL containing the status constraint, record it in filters
+            sql_all = " ".join(r.sql.lower() for r in plan.sql_requests)
+            if val.lower() in sql_all:
+                if plan.filters is None:
+                    plan.filters = {}
+                if col not in plan.filters:
+                    plan.filters[col] = val
 
     if plan.clarification_needed:
         clarification_state = AnalyticalState(
