@@ -67,12 +67,30 @@ def _render_sidebar(session):
 
     st.subheader("Current datasets")
     if session.datasets:
+        profile_map = {p.table_name: p for p in session.profiles}
         for dataset in session.datasets:
+            meta = dataset.meta
+            ext = Path(meta.original_filename).suffix.lower()
+            if ext == ".csv":
+                file_type = "CSV"
+            elif ext in {".xlsx", ".xls"}:
+                file_type = f"Excel ({meta.sheet_name})" if meta.sheet_name else "Excel"
+            else:
+                file_type = ext.upper().lstrip(".") or "Tabular"
+
+            prof = profile_map.get(meta.table_name)
+            if prof:
+                col_names = [f"`{col.name}` ({col.data_type})" for col in prof.columns]
+            else:
+                col_names = [f"`{col}`" for col in meta.columns]
+
             st.markdown(
-                f"- `{dataset.meta.table_name}`  \n"
-                f"  {dataset.meta.original_filename} · "
-                f"{dataset.meta.row_count:,} rows · {dataset.meta.column_count} columns"
+                f"**📄 {meta.original_filename}** (`{meta.table_name}`)  \n"
+                f"{file_type} · {meta.row_count:,} rows · {meta.column_count} cols"
             )
+            with st.expander(f"Preview {meta.table_name} (5 rows)"):
+                st.caption("Columns: " + " · ".join(col_names))
+                st.dataframe(dataset.dataframe.head(5), use_container_width=True, hide_index=True)
     else:
         st.caption("No datasets uploaded yet.")
 
@@ -80,8 +98,7 @@ def _render_sidebar(session):
         with st.expander("Candidate relationships"):
             for rel in session.relationships:
                 st.caption(
-                    f"{rel.left_table}.{rel.left_column} ↔ "
-                    f"{rel.right_table}.{rel.right_column} ({rel.reason})"
+                    f"🔗 `{rel.left_table}.{rel.left_column}` → `{rel.right_table}.{rel.right_column}` ({rel.reason})"
                 )
 
     st.divider()
@@ -162,45 +179,7 @@ def _empty_state() -> None:
 
 
 def _dataset_summary(session) -> None:
-    st.subheader("Datasets in this session")
-
-    # Map table names to TableProfile for type information
-    profile_map = {p.table_name: p for p in session.profiles}
-
-    for dataset in session.datasets:
-        meta = dataset.meta
-        ext = Path(meta.original_filename).suffix.lower()
-        if ext == ".csv":
-            file_type = "CSV"
-        elif ext in {".xlsx", ".xls"}:
-            file_type = f"Excel ({meta.sheet_name})" if meta.sheet_name else "Excel"
-        else:
-            file_type = ext.upper().lstrip(".") or "Tabular"
-
-        prof = profile_map.get(meta.table_name)
-        if prof:
-            col_specs = [f"`{col.name}` ({col.data_type})" for col in prof.columns]
-        else:
-            col_specs = [f"`{col}` ({meta.dtypes.get(col, 'unknown')})" for col in meta.columns]
-
-        with st.container():
-            st.markdown(f"#### 📄 {meta.original_filename}")
-            st.markdown(
-                f"**File type:** {file_type} &nbsp;|&nbsp; "
-                f"**Table:** `{meta.table_name}` &nbsp;|&nbsp; "
-                f"**{meta.row_count:,} rows · {meta.column_count} columns**"
-            )
-            st.markdown("**Columns:** " + " · ".join(col_specs))
-            with st.expander("Preview data"):
-                st.dataframe(dataset.dataframe.head(5), use_container_width=True, hide_index=True)
-            st.markdown("---")
-
-    if session.relationships:
-        st.markdown("**Detected relationships:**")
-        for rel in session.relationships:
-            st.markdown(f"- `{rel.left_table}.{rel.left_column}` → `{rel.right_table}.{rel.right_column}`")
-        st.write("")
-
+    """Render dynamic query suggestions based on loaded dataset schemas."""
     suggestions = generate_schema_suggestions(session.profiles, session.relationships)
     if suggestions:
         st.subheader("💡 Try asking")
@@ -349,7 +328,13 @@ def _inject_styles() -> None:
         <style>
         .stApp { background: #f7f5f1; }
         h1 { letter-spacing: -0.03em; }
-        [data-testid="stSidebar"] { background: #efeae2; }
+        [data-testid="stSidebar"] {
+            background: #efeae2;
+            min-width: 380px;
+        }
+        [data-testid="stSidebar"] > div:first-child {
+            width: 380px;
+        }
         </style>
         """,
         unsafe_allow_html=True,
