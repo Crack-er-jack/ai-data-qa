@@ -176,7 +176,7 @@ def _dataset_summary(session) -> None:
         for idx, sugg in enumerate(suggestions[:6]):
             with cols[idx % len(cols)]:
                 if st.button(sugg, key=f"sugg_{idx}", use_container_width=True):
-                    st.session_state["_pending_question"] = sugg
+                    st.session_state["_execute_question"] = sugg
                     st.rerun()
 
 
@@ -189,10 +189,14 @@ def _question_area(session) -> None:
             "File upload, profiling, and DuckDB queries still work."
         )
 
-    default_question = st.session_state.pop("_pending_question", "")
+    submitted_question = None
+    if "_execute_question" in st.session_state:
+        submitted_question = st.session_state.pop("_execute_question")
+        st.session_state["user_query_input"] = submitted_question
+
     question = st.text_area(
         "Question",
-        value=default_question,
+        key="user_query_input",
         placeholder="What was our total revenue last quarter?",
         label_visibility="collapsed",
         height=90,
@@ -200,32 +204,39 @@ def _question_area(session) -> None:
     asked = st.button("Ask", type="primary")
 
     if asked:
-        session = load_from_streamlit(st.session_state)
-        connection = create_connection(session.datasets)
-        with st.spinner("Planning with the LLM, then computing in DuckDB…"):
-            answer = run_analysis(
-                question,
-                session.profiles,
-                session.relationships,
-                session.state,
-                connection,
+        submitted_question = question
+
+    if submitted_question is not None:
+        trimmed = submitted_question.strip()
+        if not trimmed:
+            st.warning("Please enter a question about the uploaded data.")
+        else:
+            session = load_from_streamlit(st.session_state)
+            connection = create_connection(session.datasets)
+            with st.spinner("Planning with the LLM, then computing in DuckDB…"):
+                answer = run_analysis(
+                    trimmed,
+                    session.profiles,
+                    session.relationships,
+                    session.state,
+                    connection,
+                )
+            if answer.state is not None:
+                session.state = answer.state
+            session.history.append(
+                {
+                    "question": trimmed,
+                    "status": answer.status,
+                    "message": answer.message,
+                    "sql": answer.sql_used,
+                    "tables": answer.tables_used,
+                    "filters": answer.filters,
+                    "viz_types": answer.viz_types,
+                }
             )
-        if answer.state is not None:
-            session.state = answer.state
-        session.history.append(
-            {
-                "question": question,
-                "status": answer.status,
-                "message": answer.message,
-                "sql": answer.sql_used,
-                "tables": answer.tables_used,
-                "filters": answer.filters,
-                "viz_types": answer.viz_types,
-            }
-        )
-        persist_to_streamlit(st.session_state, session)
-        st.session_state["_latest_answer"] = answer
-        st.rerun()
+            persist_to_streamlit(st.session_state, session)
+            st.session_state["_latest_answer"] = answer
+            st.rerun()
 
     answer = st.session_state.get("_latest_answer")
     if answer:
