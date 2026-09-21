@@ -11,6 +11,7 @@ from src.constants import MAX_FILE_SIZE_MB, MAX_SESSION_SIZE_MB, SUPPORTED_EXTEN
 from src.errors import AppError
 from src.ingestion.loader import parse_upload
 from src.ingestion.registry import create_connection, dataset_from_parsed
+from src.profiling.suggestions import generate_schema_suggestions
 from src.session import add_datasets, empty_session, load_from_streamlit, persist_to_streamlit
 from src.settings import get_settings
 
@@ -55,10 +56,14 @@ def _render_sidebar(session):
     if uploads:
         if st.button("Add to session", type="primary", use_container_width=True):
             session = _ingest_uploads(session, uploads)
+            persist_to_streamlit(st.session_state, session)
+            st.rerun()
 
     if DEMO_DIR.exists():
         if st.button("Load demo datasets", use_container_width=True):
             session = _load_demo(session)
+            persist_to_streamlit(st.session_state, session)
+            st.rerun()
 
     st.subheader("Current datasets")
     if session.datasets:
@@ -158,11 +163,53 @@ def _empty_state() -> None:
 
 def _dataset_summary(session) -> None:
     st.subheader("Datasets in this session")
-    cols = st.columns(min(3, len(session.datasets)))
-    for i, dataset in enumerate(session.datasets):
-        with cols[i % len(cols)]:
-            st.metric(dataset.meta.table_name, f"{dataset.meta.row_count:,} rows")
-            st.caption(", ".join(dataset.meta.columns[:8]) + ("…" if len(dataset.meta.columns) > 8 else ""))
+
+    # Map table names to TableProfile for type information
+    profile_map = {p.table_name: p for p in session.profiles}
+
+    for dataset in session.datasets:
+        meta = dataset.meta
+        ext = Path(meta.original_filename).suffix.lower()
+        if ext == ".csv":
+            file_type = "CSV"
+        elif ext in {".xlsx", ".xls"}:
+            file_type = f"Excel ({meta.sheet_name})" if meta.sheet_name else "Excel"
+        else:
+            file_type = ext.upper().lstrip(".") or "Tabular"
+
+        prof = profile_map.get(meta.table_name)
+        if prof:
+            col_specs = [f"`{col.name}` ({col.data_type})" for col in prof.columns]
+        else:
+            col_specs = [f"`{col}` ({meta.dtypes.get(col, 'unknown')})" for col in meta.columns]
+
+        with st.container():
+            st.markdown(f"#### 📄 {meta.original_filename}")
+            st.markdown(
+                f"**File type:** {file_type} &nbsp;|&nbsp; "
+                f"**Table:** `{meta.table_name}` &nbsp;|&nbsp; "
+                f"**{meta.row_count:,} rows · {meta.column_count} columns**"
+            )
+            st.markdown("**Columns:** " + " · ".join(col_specs))
+            with st.expander("Preview data"):
+                st.dataframe(dataset.dataframe.head(5), use_container_width=True, hide_index=True)
+            st.markdown("---")
+
+    if session.relationships:
+        st.markdown("**Detected relationships:**")
+        for rel in session.relationships:
+            st.markdown(f"- `{rel.left_table}.{rel.left_column}` → `{rel.right_table}.{rel.right_column}`")
+        st.write("")
+
+    suggestions = generate_schema_suggestions(session.profiles, session.relationships)
+    if suggestions:
+        st.subheader("💡 Try asking")
+        cols = st.columns(min(len(suggestions), 3))
+        for idx, sugg in enumerate(suggestions[:6]):
+            with cols[idx % len(cols)]:
+                if st.button(sugg, key=f"sugg_{idx}", use_container_width=True):
+                    st.session_state["_pending_question"] = sugg
+                    st.rerun()
 
 
 def _question_area(session) -> None:
@@ -174,8 +221,10 @@ def _question_area(session) -> None:
             "File upload, profiling, and DuckDB queries still work."
         )
 
+    default_question = st.session_state.pop("_pending_question", "")
     question = st.text_area(
         "Question",
+        value=default_question,
         placeholder="What was our total revenue last quarter?",
         label_visibility="collapsed",
         height=90,
@@ -241,6 +290,12 @@ def _render_answer(answer) -> None:
             with st.expander("Error details"):
                 for err in answer.errors:
                     st.code(err)
+        return
+
+    # Metadata and discoverability questions have no SQL queries or numeric results
+    if not answer.sql_used and not answer.results:
+        st.info("Dataset Overview")
+        st.markdown(answer.message)
         return
 
     st.success("Computed from your uploaded data with DuckDB.")

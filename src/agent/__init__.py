@@ -16,6 +16,7 @@ from src.llm.provider import GroqProvider
 from src.llm.schemas import AnalysisPlan
 from src.matching.relationships import RelationshipCandidate
 from src.profiling.schema import TableProfile
+from src.profiling.suggestions import build_metadata_response, is_metadata_question
 from src.query.query_data import QueryResult, query_data
 from src.results import FormattedResult, format_query_result
 from src.visualization import build_figure, choose_visualization
@@ -65,6 +66,24 @@ def run_analysis(
             question=question,
             status="error",
             message="Upload at least one CSV or Excel file before asking a question.",
+            state=state,
+        )
+
+    # Route metadata and discoverability questions directly without LLM SQL generation
+    if is_metadata_question(question):
+        metadata_msg = build_metadata_response(profiles, relationships)
+        return AgentAnswer(
+            question=question,
+            status="ok",
+            message=metadata_msg,
+            results=[],
+            visualizations=[],
+            viz_types=[],
+            sql_used=[],
+            tables_used=[p.table_name for p in profiles],
+            filters={},
+            time_period=None,
+            plan=None,
             state=state,
         )
 
