@@ -163,18 +163,7 @@ def _load_demo(session):
 
 def _empty_state() -> None:
     st.info(
-        "Upload one or more CSV/Excel files, or load the demo datasets from the sidebar, "
-        "then ask a question in natural language."
-    )
-    st.markdown(
-        """
-**Example questions**
-- What was our total revenue last quarter?
-- Which region generated the most revenue?
-- What about South?
-- Compare revenue across regions.
-- Show me the monthly revenue trend.
-"""
+        "Upload one or more CSV or Excel files, or load the demo datasets from the sidebar to get started."
     )
 
 
