@@ -50,6 +50,7 @@ def build_context(
             "Do not request raw datasets.",
             "SQL FIDELITY: When the question refers to a time period (e.g. 'last quarter', 'this year', '2025') or category, you MUST include the exact WHERE filter in the SQL.",
             "When the user answers a clarification question (e.g. 'per month', 'daily', 'South'), apply that answer to the previous question and metric rather than asking for clarification again.",
+            "DUCKDB DATE CASTING: When using strftime or date_part on date columns, always wrap the column in TRY_CAST(col AS DATE), e.g. strftime(TRY_CAST(date_col AS DATE), '%Y-%m').",
         ],
     }
     status_default = resolve_revenue_status_default(question, profiles)

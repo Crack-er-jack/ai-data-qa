@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import duckdb
 
 from src.constants import MAX_ANALYTICAL_QUERIES, MAX_SQL_CORRECTION_RETRIES
+from src.context.builder import build_context
 from src.context.builder import build_context, resolve_revenue_status_default
 from src.context.state import AnalyticalState, looks_like_follow_up, merge_state
 from src.errors import LlmError
@@ -17,7 +18,7 @@ from src.llm.schemas import AnalysisPlan
 from src.matching.relationships import RelationshipCandidate
 from src.profiling.schema import TableProfile
 from src.profiling.suggestions import build_metadata_response, is_metadata_question
-from src.query.query_data import QueryResult, query_data
+from src.query.query_data import QueryResult, normalize_duckdb_datetime_sql, query_data
 from src.results import FormattedResult, format_query_result
 from src.visualization import build_figure, choose_visualization
 
@@ -198,6 +199,8 @@ def run_analysis(
             state=state,
         )
 
+    for item in plan.sql_requests:
+        item.sql = normalize_duckdb_datetime_sql(item.sql)
     sql_requests = [item for item in plan.sql_requests if item.sql.strip()][:MAX_ANALYTICAL_QUERIES]
     if not sql_requests:
         return AgentAnswer(
@@ -239,6 +242,8 @@ def run_analysis(
                 errors.append(str(exc))
                 break
             plan = repaired
+            for item in repaired.sql_requests:
+                item.sql = normalize_duckdb_datetime_sql(item.sql)
             sql_requests = [
                 item for item in repaired.sql_requests if item.sql.strip()
             ][:MAX_ANALYTICAL_QUERIES]
@@ -270,6 +275,8 @@ def run_analysis(
             errors.append(str(exc))
             break
         plan = repaired
+        for item in repaired.sql_requests:
+            item.sql = normalize_duckdb_datetime_sql(item.sql)
         sql_requests = [item for item in repaired.sql_requests if item.sql.strip()][
             :MAX_ANALYTICAL_QUERIES
         ]

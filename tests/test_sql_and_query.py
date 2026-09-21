@@ -186,3 +186,48 @@ def test_cell_truncation_limits_length():
     assert len(clipped_val) <= MAX_CELL_CHARS + 1
     assert clipped_val.endswith("…")
 
+
+def test_normalize_duckdb_datetime_sql_rewrites_uncast_calls():
+    """Verify normalize_duckdb_datetime_sql wraps uncast dates in TRY_CAST."""
+    from src.query.query_data import normalize_duckdb_datetime_sql
+
+    sql1 = "SELECT strftime(order_date, '%Y-%m') AS month FROM orders"
+    assert normalize_duckdb_datetime_sql(sql1) == "SELECT strftime(TRY_CAST(order_date AS DATE), '%Y-%m') AS month FROM orders"
+
+    sql2 = "SELECT strftime('%Y-%m', o.order_date) AS month FROM orders o"
+    assert normalize_duckdb_datetime_sql(sql2) == "SELECT strftime(TRY_CAST(o.order_date AS DATE), '%Y-%m') AS month FROM orders o"
+
+    sql3 = "SELECT date_part('year', order_date) AS yr FROM orders"
+    assert normalize_duckdb_datetime_sql(sql3) == "SELECT date_part('year', TRY_CAST(order_date AS DATE)) AS yr FROM orders"
+
+    sql4 = "SELECT extract(year FROM order_date) AS yr FROM orders"
+    assert normalize_duckdb_datetime_sql(sql4) == "SELECT extract(year FROM TRY_CAST(order_date AS DATE)) AS yr FROM orders"
+
+    # Already cast queries must not be duplicated
+    sql_cast = "SELECT strftime(CAST(order_date AS DATE), '%Y-%m') FROM orders"
+    assert normalize_duckdb_datetime_sql(sql_cast) == sql_cast
+
+
+def test_query_data_executes_uncast_strftime_safely():
+    """Verify DuckDB executes uncast strftime queries without Binder Error."""
+    df = pd.DataFrame({"order_date": ["2026-05-15", "2026-06-20"], "line_total": [100.0, 150.0]})
+    dataset = dataset_from_parsed(
+        ParsedTable(
+            original_filename="orders.csv",
+            table_name="orders",
+            dataframe=df,
+            size_bytes=100,
+            original_columns={"order_date": "order_date", "line_total": "line_total"},
+        )
+    )
+    con = create_connection([dataset])
+
+    # Uncast strftime query that would normally trigger DuckDB Binder Error
+    sql = "SELECT strftime(order_date, '%Y-%m') AS month, SUM(line_total) AS total FROM orders GROUP BY 1 ORDER BY 1"
+    result = query_data(sql, con, {"orders"})
+    assert result.success
+    assert result.row_count == 2
+    assert result.rows[0][0] == "2026-05"
+    assert result.rows[1][0] == "2026-06"
+
+

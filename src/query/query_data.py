@@ -40,6 +40,50 @@ class QueryResult:
         return payload
 
 
+def normalize_duckdb_datetime_sql(sql: str) -> str:
+    """Normalize common datetime function calls in DuckDB SQL for string columns.
+
+    DuckDB strongly types datetime operations. When tables are ingested from
+    CSV or text formats with string dates, functions like strftime(col, '%Y-%m')
+    fail with binder errors unless cast. This utility safely ensures date
+    columns passed to strftime, date_part, and extract are cast with TRY_CAST.
+
+    Args:
+        sql: The input SQL query string.
+
+    Returns:
+        SQL query with datetime function calls safely cast for DuckDB.
+    """
+    if not sql:
+        return sql
+
+    # Pattern 1: strftime('format', col) -> strftime(TRY_CAST(col AS DATE), 'format')
+    s = re.sub(
+        r"(?i)\bstrftime\s*\(\s*('[^']+')\s*,\s*([a-zA-Z_][a-zA-Z0-9_\.]*)\s*\)",
+        r"strftime(TRY_CAST(\2 AS DATE), \1)",
+        sql,
+    )
+    # Pattern 2: strftime(col, 'format') -> strftime(TRY_CAST(col AS DATE), 'format')
+    s = re.sub(
+        r"(?i)\bstrftime\s*\(\s*([a-zA-Z_][a-zA-Z0-9_\.]*)\s*,\s*('[^']+')\s*\)",
+        r"strftime(TRY_CAST(\1 AS DATE), \2)",
+        s,
+    )
+    # Pattern 3: date_part('part', col) -> date_part('part', TRY_CAST(col AS DATE))
+    s = re.sub(
+        r"(?i)\bdate_part\s*\(\s*('[^']+')\s*,\s*([a-zA-Z_][a-zA-Z0-9_\.]*)\s*\)",
+        r"date_part(\1, TRY_CAST(\2 AS DATE))",
+        s,
+    )
+    # Pattern 4: extract(part FROM col) -> extract(part FROM TRY_CAST(col AS DATE))
+    s = re.sub(
+        r"(?i)\bextract\s*\(\s*([a-zA-Z_]+)\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_\.]*)\s*\)",
+        r"extract(\1 FROM TRY_CAST(\2 AS DATE))",
+        s,
+    )
+    return s
+
+
 def query_data(
     sql: str,
     connection: duckdb.DuckDBPyConnection,
@@ -48,8 +92,9 @@ def query_data(
     max_rows: int = MAX_RESULT_ROWS,
     max_llm_rows: int = MAX_LLM_RESULT_ROWS,
 ) -> QueryResult:
+    normalized_sql = normalize_duckdb_datetime_sql(sql)
     try:
-        clean_sql = validate_sql(sql, known_tables, known_columns)
+        clean_sql = validate_sql(normalized_sql, known_tables, known_columns)
     except SqlValidationError as exc:
         return QueryResult(success=False, sql=sql, error=str(exc))
 

@@ -167,3 +167,4 @@ class TestRevenueStatusDefault:
 
         assert answer.status == "clarification"
         assert answer.message == "Which region or product category would you like to view?"
+
