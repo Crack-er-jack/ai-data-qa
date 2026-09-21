@@ -291,3 +291,4 @@ class TestSessionUploadLifecycle:
             preview_df = ds.dataframe.head(5)
             assert len(preview_df) == 1
             assert not preview_df.empty
+
