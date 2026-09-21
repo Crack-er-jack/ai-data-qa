@@ -167,9 +167,17 @@ def _compact_profile(profile: TableProfile) -> dict[str, Any]:
 def _relevant_state(question: str, state: AnalyticalState) -> dict[str, Any]:
     if not state.last_question and not state.metric and not state.filters:
         return {"available": False}
-    include_preview = looks_like_follow_up(question) or bool(state.metric or state.filters)
+    is_follow_up = looks_like_follow_up(question)
+    if not is_follow_up:
+        return {
+            "available": True,
+            "is_follow_up": False,
+            "previous_question": state.last_question,
+            "note": "This is a new standalone question. Do not inherit previous filters or time periods unless explicitly asked.",
+        }
     data: dict[str, Any] = {
         "available": True,
+        "is_follow_up": True,
         "metric": state.metric,
         "filters": state.filters,
         "grouping": state.grouping,
@@ -180,6 +188,6 @@ def _relevant_state(question: str, state: AnalyticalState) -> dict[str, Any]:
         "last_result_row_count": state.last_row_count,
         "last_question": state.last_question,
     }
-    if include_preview and state.last_sql:
+    if state.last_sql:
         data["previous_sql"] = state.last_sql[:2]
     return data

@@ -96,11 +96,20 @@ def query_data_or_raise(
     return result
 
 
+def strip_trailing_semicolon(sql: str) -> str:
+    """Safely strip trailing semicolons and whitespace without modifying literals."""
+    s = sql.strip()
+    while s.endswith(";"):
+        s = s[:-1].strip()
+    return s
+
+
 def _apply_limit(sql: str, max_rows: int) -> str:
     """Ensure that the query execution is strictly bounded by max_rows.
 
+    Preserves exact string literals, date literals, identifiers, CTEs, and ORDER BY clauses.
     If an existing trailing LIMIT is smaller than max_rows, it is preserved.
-    Otherwise, the query is wrapped in an outer bounded SELECT with LIMIT max_rows.
+    Otherwise, wraps the query in a safe subquery envelope with LIMIT max_rows.
 
     Args:
         sql: The validated read-only SQL query string.
@@ -109,11 +118,11 @@ def _apply_limit(sql: str, max_rows: int) -> str:
     Returns:
         SQL string guaranteed to have a bounded limit.
     """
-    stripped = sql.rstrip().rstrip(";")
-    existing_limit = _extract_trailing_limit(stripped)
+    clean = strip_trailing_semicolon(sql)
+    existing_limit = _extract_trailing_limit(clean)
     if existing_limit is not None and existing_limit <= max_rows:
-        return stripped
-    return f"SELECT * FROM ({stripped}) AS bounded_query LIMIT {max_rows}"
+        return clean
+    return f"SELECT *\nFROM (\n{clean}\n) AS bounded_query\nLIMIT {max_rows}"
 
 
 def _extract_trailing_limit(sql: str) -> int | None:

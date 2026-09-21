@@ -279,8 +279,10 @@ def _render_answer(answer) -> None:
             st.markdown("**Filters:** " + ", ".join(f"`{k}` = {v}" for k, v in answer.filters.items()))
         if answer.plan and answer.plan.metric:
             st.markdown(f"**Metric:** `{answer.plan.metric}`")
-        if answer.plan and answer.plan.time_period:
-            st.markdown(f"**Time period:** {answer.plan.time_period}")
+        if answer.time_period:
+            st.markdown(f"**Time period:** {answer.time_period}")
+        elif answer.state and answer.state.time_period:
+            st.markdown(f"**Time period:** {answer.state.time_period}")
         for sql in answer.sql_used:
             st.code(sql, language="sql")
         st.caption("Numbers come from DuckDB. The model only planned the query and wrote the explanation.")

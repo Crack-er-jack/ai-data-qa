@@ -10,7 +10,7 @@ import duckdb
 
 from src.constants import MAX_ANALYTICAL_QUERIES, MAX_SQL_CORRECTION_RETRIES
 from src.context.builder import build_context
-from src.context.state import AnalyticalState, merge_state
+from src.context.state import AnalyticalState, looks_like_follow_up, merge_state
 from src.errors import LlmError
 from src.llm.provider import GroqProvider
 from src.llm.schemas import AnalysisPlan
@@ -38,6 +38,7 @@ class AgentAnswer:
     sql_used: list[str] = field(default_factory=list)
     tables_used: list[str] = field(default_factory=list)
     filters: dict[str, str] = field(default_factory=dict)
+    time_period: str | None = None
     plan: AnalysisPlan | None = None
     errors: list[str] = field(default_factory=list)
     state: AnalyticalState | None = None
@@ -217,6 +218,7 @@ def run_analysis(
     numbers = _collect_numbers(formatted)
     message = _compose_message(plan.explanation, formatted, numbers)
     tables_used = _tables_from_plan(plan, executed, known_tables)
+    is_follow_up = looks_like_follow_up(question) or plan.intent == "follow_up"
     new_state = merge_state(
         previous=state,
         metric=plan.metric,
@@ -229,6 +231,7 @@ def run_analysis(
         columns=formatted[0].dataframe.columns.tolist() if formatted else [],
         row_count=sum(item.dataframe.shape[0] for item in formatted),
         question=question,
+        is_follow_up=is_follow_up,
     )
     return AgentAnswer(
         question=question,
@@ -240,6 +243,7 @@ def run_analysis(
         sql_used=[item.sql for item in executed],
         tables_used=tables_used,
         filters=new_state.filters,
+        time_period=new_state.time_period,
         plan=plan,
         errors=errors,
         state=new_state,

@@ -46,18 +46,118 @@ _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def strip_sql_comments(sql: str) -> str:
-    without_blocks = _COMMENT_BLOCK.sub(" ", sql)
-    return _COMMENT_LINE.sub(" ", without_blocks)
+    """Remove SQL block and line comments without modifying string literals.
+
+    Guarantees that hyphens or slashes inside quotes (e.g. date strings
+    or URLs) are never misidentified as comments.
+
+    Args:
+        sql: The raw SQL string.
+
+    Returns:
+        SQL string with comments stripped.
+    """
+    result: list[str] = []
+    i = 0
+    n = len(sql)
+    in_single = False
+    in_double = False
+
+    while i < n:
+        c = sql[i]
+        # Track literal boundaries
+        if c == "'" and not in_double:
+            in_single = not in_single
+            result.append(c)
+            i += 1
+            continue
+        if c == '"' and not in_single:
+            in_double = not in_double
+            result.append(c)
+            i += 1
+            continue
+
+        if not in_single and not in_double:
+            # Check for block comment /* ... */
+            if c == "/" and i + 1 < n and sql[i + 1] == "*":
+                end_idx = sql.find("*/", i + 2)
+                if end_idx != -1:
+                    i = end_idx + 2
+                    result.append(" ")
+                    continue
+                else:
+                    break
+            # Check for line comment -- ...
+            if c == "-" and i + 1 < n and sql[i + 1] == "-":
+                newline_idx = sql.find("\n", i + 2)
+                if newline_idx != -1:
+                    i = newline_idx
+                    continue
+                else:
+                    break
+
+        result.append(c)
+        i += 1
+
+    return "".join(result)
 
 
 def mask_literals(sql: str) -> str:
+    """Mask string literals for safe lexical keyword scanning."""
     return _STRINGS.sub("'x'", sql)
 
 
 def split_statements(sql: str) -> list[str]:
+    """Split SQL into individual statements, ignoring semicolons inside string literals.
+
+    Args:
+        sql: The raw SQL string.
+
+    Returns:
+        List of non-empty SQL statement strings.
+    """
     cleaned = strip_sql_comments(sql)
-    parts = [part.strip() for part in cleaned.split(";")]
-    return [part for part in parts if part]
+    statements: list[str] = []
+    current: list[str] = []
+    in_single = False
+    in_double = False
+    escape = False
+
+    for char in cleaned:
+        if escape:
+            current.append(char)
+            escape = False
+            continue
+
+        if char == "\\":
+            current.append(char)
+            escape = True
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            current.append(char)
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            current.append(char)
+            continue
+
+        if char == ";" and not in_single and not in_double:
+            statement = "".join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+            continue
+
+        current.append(char)
+
+    trailing = "".join(current).strip()
+    if trailing:
+        statements.append(trailing)
+
+    return statements
 
 
 def validate_sql(sql: str, known_tables: set[str], known_columns: dict[str, set[str]] | None = None) -> str:
