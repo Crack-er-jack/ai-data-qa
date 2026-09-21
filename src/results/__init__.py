@@ -23,6 +23,8 @@ class FormattedResult:
     truncated: bool
     scalar_value: Any | None = None
     scalar_label: str | None = None
+    entity_value: Any | None = None
+    entity_label: str | None = None
 
 
 def classify_result(frame: pd.DataFrame) -> ResultKind:
@@ -58,18 +60,39 @@ def format_query_result(result: QueryResult, purpose: str = "Result") -> Formatt
         )
     if kind == "scalar":
         numeric_cols = [c for c in frame.columns if pd.api.types.is_numeric_dtype(frame[c])]
-        label = numeric_cols[0] if numeric_cols else frame.columns[0]
-        value = frame.iloc[0][label]
-        pretty = _pretty_label(label)
+        non_numeric_cols = [c for c in frame.columns if c not in numeric_cols]
+        num_label = numeric_cols[0] if numeric_cols else frame.columns[0]
+        num_val = frame.iloc[0][num_label]
+        pretty_num = _pretty_label(num_label)
+
+        # When a single-row result contains both an entity and a metric (e.g. segment + revenue)
+        if non_numeric_cols:
+            entity_col = non_numeric_cols[0]
+            entity_val = frame.iloc[0][entity_col]
+            pretty_entity = _pretty_label(entity_col)
+            text = f"{pretty_entity}: {entity_val} ({pretty_num}: {_format_number(num_val)})"
+            return FormattedResult(
+                kind="scalar",
+                title=purpose,
+                text=text,
+                dataframe=frame,
+                sql=result.sql,
+                truncated=result.truncated,
+                scalar_value=num_val,
+                scalar_label=pretty_num,
+                entity_value=entity_val,
+                entity_label=pretty_entity,
+            )
+
         return FormattedResult(
             kind="scalar",
             title=purpose,
-            text=f"{pretty}: {_format_number(value)}",
+            text=f"{pretty_num}: {_format_number(num_val)}",
             dataframe=frame,
             sql=result.sql,
             truncated=result.truncated,
-            scalar_value=value,
-            scalar_label=pretty,
+            scalar_value=num_val,
+            scalar_label=pretty_num,
         )
     return FormattedResult(
         kind=kind,

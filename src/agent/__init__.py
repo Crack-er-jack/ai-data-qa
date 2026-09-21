@@ -18,6 +18,7 @@ from src.llm.schemas import AnalysisPlan
 from src.matching.relationships import RelationshipCandidate
 from src.profiling.schema import TableProfile
 from src.profiling.suggestions import build_metadata_response, is_metadata_question
+from src.query.query_data import QueryResult, query_data
 from src.query.query_data import QueryResult, normalize_duckdb_datetime_sql, query_data
 from src.results import FormattedResult, format_query_result
 from src.visualization import build_figure, choose_visualization

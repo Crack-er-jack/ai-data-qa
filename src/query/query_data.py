@@ -94,6 +94,7 @@ def query_data(
 ) -> QueryResult:
     normalized_sql = normalize_duckdb_datetime_sql(sql)
     try:
+        clean_sql = validate_sql(sql, known_tables, known_columns)
         clean_sql = validate_sql(normalized_sql, known_tables, known_columns)
     except SqlValidationError as exc:
         return QueryResult(success=False, sql=sql, error=str(exc))

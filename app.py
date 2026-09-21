@@ -290,23 +290,33 @@ def _render_answer(answer) -> None:
 
     # Display KPI metrics side-by-side if multiple
     if scalars:
-        cols = st.columns(min(len(scalars), 4))
-        for idx, scalar_res in enumerate(scalars):
-            with cols[idx % len(cols)]:
-                label = scalar_res.scalar_label or scalar_res.title
-                if ": " in scalar_res.text:
-                    display_val = scalar_res.text.split(": ", 1)[-1]
-                else:
-                    display_val = str(scalar_res.scalar_value)
-                st.metric(label=label, value=display_val)
+        metric_cards: list[tuple[str, str]] = []
+        for scalar_res in scalars:
+            if scalar_res.entity_label and scalar_res.entity_value is not None:
+                metric_cards.append((scalar_res.entity_label, str(scalar_res.entity_value)))
+            label = scalar_res.scalar_label or scalar_res.title
+            if scalar_res.scalar_value is not None:
+                from src.results import _format_number
+                metric_cards.append((label, _format_number(scalar_res.scalar_value)))
+            elif ": " in scalar_res.text:
+                metric_cards.append((label, scalar_res.text.split(": ", 1)[-1]))
+
+        if metric_cards:
+            cols = st.columns(min(len(metric_cards), 4))
+            for idx, (label, val) in enumerate(metric_cards):
+                with cols[idx % len(cols)]:
+                    st.metric(label=label, value=val)
 
     # Render Plotly visualizations
     for figure in answer.visualizations:
         st.plotly_chart(figure, use_container_width=True)
 
-    # Render data tables for non-scalar results
+    # Render data tables for non-scalar results and entity-lookup results
     for res in non_scalars:
         if not res.dataframe.empty:
+            st.dataframe(res.dataframe, use_container_width=True, hide_index=True)
+    for res in scalars:
+        if res.entity_value is not None and not res.dataframe.empty:
             st.dataframe(res.dataframe, use_container_width=True, hide_index=True)
 
     # Calculation transparency expander

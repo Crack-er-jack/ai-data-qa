@@ -77,3 +77,25 @@ def test_build_figure_returns_none_for_kpi_table_empty():
     assert build_figure(df, "none") is None
     assert build_figure(pd.DataFrame(), "bar") is None
 
+
+def test_format_query_result_retains_entity_and_metric():
+    """Verify format_query_result preserves entity column (e.g. segment) alongside metric."""
+    from src.query.query_data import QueryResult
+    from src.results import format_query_result
+
+    df = pd.DataFrame({"segment": ["Consumer"], "revenue": [37218.25]})
+    query_res = QueryResult(
+        success=True,
+        sql="SELECT segment, SUM(line_total) AS revenue FROM orders GROUP BY segment LIMIT 1",
+        dataframe=df,
+    )
+    formatted = format_query_result(query_res)
+
+    assert formatted.kind == "scalar"
+    assert formatted.entity_label == "Segment"
+    assert formatted.entity_value == "Consumer"
+    assert formatted.scalar_label == "Revenue"
+    assert formatted.scalar_value == 37218.25
+    assert formatted.text == "Segment: Consumer (Revenue: 37,218.25)"
+
+
