@@ -107,6 +107,15 @@ def run_analysis(
         )
 
     if plan.clarification_needed:
+        clarification_state = AnalyticalState(
+            metric=plan.metric or state.metric,
+            filters=plan.filters or state.filters,
+            grouping=plan.grouping or state.grouping,
+            time_period=plan.time_period or state.time_period,
+            last_tables=plan.required_tables or state.last_tables,
+            last_question=question,
+            last_clarification=plan.clarification_question,
+        )
         return AgentAnswer(
             question=question,
             status="clarification",
@@ -114,7 +123,7 @@ def run_analysis(
             or "Could you clarify what you want to measure and which filters to apply?",
             clarification=plan.clarification_question,
             plan=plan,
-            state=state,
+            state=clarification_state,
         )
     if plan.cannot_answer:
         return AgentAnswer(
@@ -237,7 +246,7 @@ def run_analysis(
     numbers = _collect_numbers(formatted)
     message = _compose_message(plan.explanation, formatted, numbers)
     tables_used = _tables_from_plan(plan, executed, known_tables)
-    is_follow_up = looks_like_follow_up(question) or plan.intent == "follow_up"
+    is_follow_up = looks_like_follow_up(question, state=state) or plan.intent == "follow_up"
     new_state = merge_state(
         previous=state,
         metric=plan.metric,

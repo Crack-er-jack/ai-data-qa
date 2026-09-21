@@ -292,3 +292,111 @@ class TestSessionUploadLifecycle:
             assert len(preview_df) == 1
             assert not preview_df.empty
 
+
+class TestClarificationFollowUpAndExecution:
+    """Tests verifying that clarification follow-ups preserve context and execute cleanly."""
+
+    def test_granularity_phrases_recognized_as_follow_ups(self):
+        """Phrases like 'per month', 'by month', 'monthly' must be recognized as follow-ups."""
+        from src.context.state import looks_like_follow_up
+
+        assert looks_like_follow_up("per month") is True
+        assert looks_like_follow_up("by month") is True
+        assert looks_like_follow_up("monthly") is True
+        assert looks_like_follow_up("daily") is True
+        assert looks_like_follow_up("quarterly") is True
+        assert looks_like_follow_up("by region") is True
+        assert looks_like_follow_up("per customer") is True
+
+    def test_clarification_response_inherits_metric_and_executes(self):
+        """Simulate a clarification sequence: Q1 asks for clarification -> Q2 answers 'per month'."""
+        from src.llm.schemas import AnalysisPlan, SqlRequest
+
+        class ScriptedPlanner:
+            def __init__(self, plans):
+                self.plans = list(plans)
+                self.calls = 0
+
+            def plan(self, context: str, question: str, repair: str | None = None):
+                p = self.plans[self.calls]
+                self.calls += 1
+                return p
+
+        df = pd.DataFrame(
+            {
+                "order_id": [1, 2, 3],
+                "order_date": pd.to_datetime(["2026-01-15", "2026-01-20", "2026-02-10"]),
+                "line_total": [100.0, 200.0, 300.0],
+            }
+        )
+        ds = _create_synthetic_dataset("orders.csv", df)
+        profiles = [profile_dataset(ds)]
+        con = create_connection([ds])
+
+        # Step 1: Q1 asks for line_total over time, planner asks for clarification
+        plan_q1 = AnalysisPlan(
+            intent="clarification",
+            clarification_needed=True,
+            clarification_question="Would you like daily totals, monthly totals, or raw line totals per order?",
+            metric="line_total",
+            required_tables=["orders"],
+            sql_requests=[],
+            explanation="Clarification needed on granularity.",
+        )
+        planner = ScriptedPlanner(
+            [
+                plan_q1,
+                # Step 2: User says 'per month', planner generates monthly aggregated SQL
+                AnalysisPlan(
+                    intent="trend",
+                    clarification_needed=False,
+                    metric="line_total",
+                    grouping="month",
+                    required_tables=["orders"],
+                    sql_requests=[
+                        SqlRequest(
+                            sql=(
+                                "SELECT STRFTIME(CAST(order_date AS DATE), '%Y-%m') AS month, "
+                                "ROUND(SUM(line_total), 2) AS total_line_total "
+                                "FROM orders GROUP BY 1 ORDER BY 1"
+                            ),
+                            purpose="Monthly line total trend",
+                        )
+                    ],
+                    expected_result_shape="time_series",
+                    visualization="line",
+                    explanation="Monthly line total trend over time.",
+                ),
+            ]
+        )
+
+        ans1 = run_analysis(
+            "Show line_total over time.",
+            profiles,
+            relationships=[],
+            state=AnalyticalState(),
+            connection=con,
+            planner=planner,
+        )
+
+        assert ans1.status == "clarification"
+        assert ans1.state.last_clarification == plan_q1.clarification_question
+        assert ans1.state.metric == "line_total"
+
+        # Step 2: User replies 'per month'
+        ans2 = run_analysis(
+            "per month",
+            profiles,
+            relationships=[],
+            state=ans1.state,
+            connection=con,
+            planner=planner,
+        )
+
+        assert ans2.status == "ok"
+        assert len(ans2.sql_used) == 1
+        assert "strftime" in ans2.sql_used[0].lower()
+        assert ans2.state.metric == "line_total"
+        assert ans2.state.last_clarification is None
+
+

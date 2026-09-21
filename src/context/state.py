@@ -18,6 +18,7 @@ class AnalyticalState:
     last_columns: list[str] = field(default_factory=list)
     last_row_count: int | None = None
     last_question: str | None = None
+    last_clarification: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -37,6 +38,7 @@ class AnalyticalState:
             last_columns=list(data.get("last_columns") or []),
             last_row_count=data.get("last_row_count"),
             last_question=data.get("last_question"),
+            last_clarification=data.get("last_clarification"),
         )
 
 
@@ -137,7 +139,7 @@ def merge_state(
         New AnalyticalState instance with verified, non-stale context.
     """
     if is_follow_up is None:
-        is_follow_up = looks_like_follow_up(question)
+        is_follow_up = looks_like_follow_up(question, state=previous)
 
     clean_current_filters = {
         str(k): str(v) for k, v in (filters or {}).items() if v not in (None, "")
@@ -177,19 +179,22 @@ def merge_state(
         last_columns=columns or previous.last_columns,
         last_row_count=row_count if row_count is not None else previous.last_row_count,
         last_question=question,
+        last_clarification=None,
     )
 
 
-def looks_like_follow_up(question: str) -> bool:
+def looks_like_follow_up(question: str, state: AnalyticalState | None = None) -> bool:
     """Determine whether a natural language question is an elliptical follow-up.
 
     True follow-ups modify, filter, or expand upon the active context (e.g.
-    'What about South?', 'And in 2026?', 'Break that down by month').
+    'What about South?', 'And in 2026?', 'Break that down by month', 'per month').
     Standalone questions define their own independent subject and metric (e.g.
     'What is the total revenue from South?', 'Show monthly revenue').
 
     Args:
         question: The user's natural language input string.
+        state: Optional previous AnalyticalState. If the previous turn asked for
+            clarification, short replies are treated as clarification answers.
 
     Returns:
         True if the question is linguistically a follow-up, False otherwise.
@@ -197,6 +202,12 @@ def looks_like_follow_up(question: str) -> bool:
     text = question.strip().lower()
     if not text:
         return False
+
+    # If the previous turn requested clarification, any concise response is a clarification answer
+    if state and state.last_clarification:
+        words = text.rstrip("?.!").split()
+        if len(words) <= 5 and not any(kw in text for kw in ("what is", "how many", "show total")):
+            return True
 
     # Explicit follow-up openers
     follow_up_starts = (
@@ -218,16 +229,25 @@ def looks_like_follow_up(question: str) -> bool:
         "show that",
         "display that",
         "plot that",
+        "per ",
+        "by ",
+        "monthly",
+        "daily",
+        "weekly",
+        "quarterly",
+        "yearly",
     )
     if any(text.startswith(prefix) for prefix in follow_up_starts):
         return True
 
-    # Short elliptical phrases without independent verbs, e.g. 'South?', 'For Engineering?'
+    # Short elliptical phrases without independent verbs, e.g. 'South?', 'For Engineering?', 'per month'
     words = text.rstrip("?").split()
     if len(words) <= 3:
-        if any(token in text for token in ("what about", "how about", "for ", "in ", "and ")):
+        if any(token in text for token in ("what about", "how about", "for ", "in ", "and ", "per ", "by ")):
             return True
         if text.startswith(("and ", "also ", "or ")):
+            return True
+        if text in {"monthly", "daily", "weekly", "quarterly", "yearly", "totals", "raw", "raw totals"}:
             return True
 
     # Phrasing referencing previous query ('that', 'those')

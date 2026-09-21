@@ -49,6 +49,7 @@ def build_context(
             "If a follow-up changes one filter, keep the previous metric and other filters.",
             "Do not request raw datasets.",
             "SQL FIDELITY: When the question refers to a time period (e.g. 'last quarter', 'this year', '2025') or category, you MUST include the exact WHERE filter in the SQL.",
+            "When the user answers a clarification question (e.g. 'per month', 'daily', 'South'), apply that answer to the previous question and metric rather than asking for clarification again.",
         ],
     }
     if temporal:
@@ -165,9 +166,9 @@ def _compact_profile(profile: TableProfile) -> dict[str, Any]:
 
 
 def _relevant_state(question: str, state: AnalyticalState) -> dict[str, Any]:
-    if not state.last_question and not state.metric and not state.filters:
+    if not state.last_question and not state.metric and not state.filters and not state.last_clarification:
         return {"available": False}
-    is_follow_up = looks_like_follow_up(question)
+    is_follow_up = looks_like_follow_up(question, state=state)
     if not is_follow_up:
         return {
             "available": True,
@@ -188,6 +189,12 @@ def _relevant_state(question: str, state: AnalyticalState) -> dict[str, Any]:
         "last_result_row_count": state.last_row_count,
         "last_question": state.last_question,
     }
+    if state.last_clarification:
+        data["previous_clarification_asked"] = state.last_clarification
+        data["clarification_instruction"] = (
+            "The user is directly answering the clarification question asked above. "
+            "Combine their answer with the previous question, metric, and tables to execute the SQL query."
+        )
     if state.last_sql:
         data["previous_sql"] = state.last_sql[:2]
     return data

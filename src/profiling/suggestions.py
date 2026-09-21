@@ -220,7 +220,7 @@ def generate_schema_suggestions(
 
         # Date + Numeric
         if date_cols:
-            suggestions.append(f"Show {c_num} over time.")
+            suggestions.append(f"Show monthly {c_num} over time.")
 
         # Cross-file or second category comparison
         if len(category_cols) > 1:

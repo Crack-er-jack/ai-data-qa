@@ -44,7 +44,9 @@ Rules:
 - If several independent questions are asked, emit up to 3 sql_requests.
 - Dependent analysis may use CTEs or subqueries in one statement.
 - If the data cannot answer the question, set cannot_answer=true and do not invent SQL.
-- If the question is ambiguous, set clarification_needed=true and ask one concise question.
+- If the question asks for a metric or trend 'over time' without specifying granularity, DEFAULT to monthly aggregation (e.g. strftime('%Y-%m', date_col)) and DO NOT ask for clarification.
+- When the user provides a follow-up or answers a clarification (e.g. 'per month', 'daily', 'by region'), combine their answer with the previous question and metric in analytical_state to produce the query immediately instead of asking for clarification again.
+- Only set clarification_needed=true if the query is fundamentally uninterpretable or missing required entities that cannot be inferred.
 - SQL must be a single read-only SELECT or WITH statement.
 - Do not use INSERT, UPDATE, DELETE, DROP, CREATE, ATTACH, COPY, or file-read functions.
 - explanation must not include fabricated numbers; numbers will be filled from DuckDB.

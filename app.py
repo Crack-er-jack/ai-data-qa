@@ -326,10 +326,8 @@ def _inject_styles() -> None:
     st.markdown(
         """
         <style>
-        .stApp { background: #f7f5f1; }
         h1 { letter-spacing: -0.03em; }
         [data-testid="stSidebar"] {
-            background: #efeae2;
             min-width: 380px;
         }
         [data-testid="stSidebar"] > div:first-child {
